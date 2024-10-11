@@ -1,92 +1,100 @@
-# FEM-Client
+# Federated Execution Manager (FEM) - Client
 
+The Federated Execution Manager (FEM) is a software component designed to coordinate and manage the execution of distributed processes in a federated leaning (FL) or decentralised compute environment where multiple devices or clients, i.e. the federated data nodes (FDN) provide compute and data resources.
 
+# What is FEM?
 
-## Getting started
+FEM is responsible for controlling and orchestrating the lifecycle of the federated tasks. It consists of two parts:
+- an **orchestrator module** (FEM-orchestrator) that ensures tasks reach the multiple FDNs in a secure and coordinated manner
+- a **client module** (FEM-client) installed at the participating FDN that pulls such tasks and allocates them in the local infrastructure.
+In short, the *FEM-client* interact with the FEM-orchestrator via a message broker (RabbitMQ) and pulls the federated task details.   across multiple Federated Data Nodes (FDNs). The FEM Client works in conjunction with the central FEM Orchestrator to manage distributed computing workflows, such as federated learning (FL) experiments and other data processing tasks.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The key functions of the FEM client include:
+- **Task reception**: it ensures secure interactions between the FDN and the central orchestrator via a message broker (RabbitMQ) and pulls the federated task details.
+- **Task stage-in**: it prepares the working enviroment, handling data volumes, container image pulling and source code Git syncronizations.
+- **Task execution**: it executes tasks in the local infraestructure delegating the resources managment the customizable executors or launchers. Default executor: "docker".
+- **Task stage-out**: it exchanging the necessary task outfiles and logging files with the central orchestrator.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+# Related Repositories
+- FEM-orchestrator: https://github.com/DataTools4Heart/FEM-orchestrator
+- dt4h-FEM-client-config: https://github.com/DataTools4Heart/dt4h-FEM-client-config
 
-## Add your files
+## Prerequisites
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+For deploying either an FEM server or client, the minimal technical requirements are:
+- Unix-based S.O. 
+- Docker and Docker Compose
+- 2CPUs and 4GB
 
+> Please, consider that tools, pipelines or FL frameworks triggered by FEM have their on connectivity requirements.
+
+The minimal client connectivity requirements to be part of an FEM-enabled federation are:
+- Outgoing connection to RabbitMQ server
+   - Default port: 5671 (AMQPS 1.0 over TLS)
+   - Destination: FEM server IP or FQDN 
+
+> Please, consider that tools, pipelines or FL frameworks triggered by FEM (e.g. Flower, etc) have their on connectivity requirements.
+
+## Getting Started
+
+1. Clone the repository:
+`git clone https://gitlab.bsc.es/fl/fem-client.git`
+
+2. Navigate to the project directory:
+`cd FEM-client`
+
+3. Setup config file
 ```
-cd existing_repo
-git remote add origin https://gitlab.bsc.es/fl/fem-client.git
-git branch -M main
-git push -uf origin main
+cp config/config_template.py config/setup/config.ini
+```
+4. 	Install SSL certificates at the config folder
+```
+cd config/
+bash generate_certs.sh
+```
+5. Install the required Python packages:
+`bash install.sh`
+
+6. Start the Client
+```
+bash start.sh
+# or
+bash setup_service.sh
 ```
 
-## Integrate with your tools
 
-- [ ] [Set up project integrations](https://gitlab.bsc.es/fl/fem-client/-/settings/integrations)
+7. Monitor the receiver:
+`tail -f receiver.log`
 
-## Collaborate with your team
+## How to set up a new FEM tool
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+If you are an AI developer and want to run a new AI tool using FEM, follow these steps:
 
-## Test and Deploy
+1. **Create a Docker image for your model and share it with the FEM team.**
 
-Use the built-in continuous integration in GitLab.
+2. **Fill in the JSON template for your model:**
+   - You can find a tool plan and task template along the schemas in the docs/templates folder so you can fill and provide the necessary details about your tool, including Docker image information or Git repository.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+3. **Follow the standard FEM client setup instructions:**
+   `bash install.sh` and `bash start.sh`
 
-***
+4. **Execute the FEM client:**
+   - Start the federated learning process with your model calling the API.
 
-# Editing this README
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
 
-## Name
-Choose a self-explaining name for your project.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
 
-## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
