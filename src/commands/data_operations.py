@@ -19,7 +19,7 @@ node_name=config.node_name
 
 def send_generated_files(generated_files, task_id, user_id, execution_id):
     try:
-        api_url = f"https://fl.dev.bsc.es/dt4h-fl/API/v1/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
+        api_url = f"https://fl.bsc.es/flmanager/API/v1/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
 
         # Logging the attempt to send generated files
         logging.info(f"Attempting to send generated files to {api_url}")
@@ -60,7 +60,7 @@ def send_generated_files(generated_files, task_id, user_id, execution_id):
 
 
 # Constants
-BASE_URL = "https://fl.dev.bsc.es/dt4h-fl/API/v1"
+BASE_URL = "https://fl.bsc.es/flmanager/API/v1"
 PUSH_FILE_CONTENT_URL = f"{BASE_URL}/data/push_file_content"
 
 def send_file_bytes(file_uri, user_id, execution_id, username="your_username", password="your_password", timeout=60):

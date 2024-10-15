@@ -13,7 +13,7 @@ import requests
 def fetch_tool_info(tool_id):
     try:
         # Make a request to the endpoint to get the tool information
-        response = requests.get(f"https://fl.dev.bsc.es/dt4h-fl/API/v1/tools/{tool_id}")
+        response = requests.get(f"https://fl.bsc.es/flmanager/API/v1/tools/{tool_id}")
         tool_info = response.json()
         return tool_info
     except Exception as e:

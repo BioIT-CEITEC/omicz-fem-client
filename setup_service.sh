@@ -7,7 +7,7 @@ CLIENT_PATH=$(dirname "$(realpath "$0")")
 CLIENT_VENV="$CLIENT_PATH/venv"
 CLIENT_EXEC="$CLIENT_PATH/receiver.py"
 CLIENT_LOGS="$CLIENT_PATH/receiver.log"
-SERVICE_NAME="flmanager_client"
+SERVICE_NAME="fem_client"
 
 ############# Functions ###########
 
