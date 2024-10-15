@@ -1,4 +1,5 @@
 *log
 config/config.py
 config/rabbitmq-ca/
+__pycache__
 
