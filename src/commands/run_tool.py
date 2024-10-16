@@ -22,12 +22,13 @@ def fetch_tool_info(api_base_url, tool_id):
         return None
 
 
-def run_tool(api_base_url, task_id, execution_id, user_id=None):
+def run_tool(api_base_url, tool_id, task_id, execution_id, user_id=None):
     try:
         logger = logging.getLogger("receiver")
 
         # Perform pre-checks if specified in the tool entry
-        tool_info = fetch_tool_info(task_id)
+        #tool_info = fetch_tool_info(api_base_url, task_id)
+        tool_info = fetch_tool_info(api_base_url, tool_id)
         if tool_info:
             pre_checks_result = pre_checks()
             #logger.info(f"Pre-checks result: {pre_checks_result}")
