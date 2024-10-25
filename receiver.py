@@ -159,6 +159,7 @@ def run_receiver():
                                                virtual_host=config.central_rabbitmq_vhost, heartbeat=600,
                                                blocked_connection_timeout=300, credentials=credentials)
 
+        logger.info(f"[.] RabbitMQ params: {params}")
         connection = pika.BlockingConnection(params)
         channel = connection.channel()
         channel.queue_declare(queue=config.node_name)
