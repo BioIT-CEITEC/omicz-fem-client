@@ -10,36 +10,40 @@ from .check_resources import *
 from config import config
 import requests
 
-def fetch_tool_info(api_base_url, tool_id):
+api_base_url=config.api_base_url
+def fetch_task_info(api_base_url, task_id):
     try:
         # Make a request to the endpoint to get the tool information
         #response = requests.get(f"https://fl.bsc.es/flmanager/API/v1/tools/{tool_id}")
-        response = requests.get(f"{api_base_url}/tools/{tool_id}")
-        tool_info = response.json()
-        return tool_info
+        response = requests.get(f"{api_base_url}/tasks/{task_id}")
+        task_info = response.json()
+        return task_info
     except Exception as e:
         print(f"Error fetching tool information: {e}")
         return None
 
 
-def run_tool(api_base_url, tool_id, task_id, execution_id, user_id=None):
+def run_tool(api_base_url, task_id, execution_id, user):
+
+    user_id=user.get("user_id")
+
     try:
         logger = logging.getLogger("receiver")
 
         # Perform pre-checks if specified in the tool entry
         #tool_info = fetch_tool_info(api_base_url, task_id)
-        tool_info = fetch_tool_info(api_base_url, tool_id)
-        if tool_info:
+        task_info = fetch_task_info(api_base_url, task_id)
+        if task_info:
             pre_checks_result = pre_checks()
             #logger.info(f"Pre-checks result: {pre_checks_result}")
 
             # Determine the launcher type
-            launcher_type = tool_info.get("info_from_tasks_collection", {}).get("launcher", "")
+            launcher_type = task_info.get("launcher", "")
             if isinstance(launcher_type, list) and launcher_type:
                 launcher_type = launcher_type[0]
 
             if launcher_type.lower() == "docker":
-                launcher = DockerLauncher(tool_info, task_id, execution_id, logger=logger, user_id=user_id)
+                launcher = DockerLauncher(task_info, task_id, execution_id, logger=logger, user_id=user_id)
                 container_id = launcher.start_tool()
                 config_dir = os.path.join(config.sandbox_path, "config", task_id)
                 os.makedirs(config_dir, exist_ok=True)
@@ -49,13 +53,13 @@ def run_tool(api_base_url, tool_id, task_id, execution_id, user_id=None):
                     logger.info(f"Tool started successfully for task_id: {task_id}")
                     logger.info(f"Container ID: {container_id}")
 
-                    send_generated_files(api_base_url, generated_files, task_id, user_id, execution_id)
+                    send_generated_files(api_base_url, generated_files, task_id, execution_id, user)
                     return container_id, generated_files
                 else:
                     return f"Error starting tool for task_id: {task_id}"
             elif launcher_type.lower() == "generic":
-                launcher = GenericLauncher(tool_info, task_id, execution_id, logger=logger, user_id=user_id)
-                logger.info(f"Generic launcher called for {tool_info}")
+                launcher = GenericLauncher(task_info, task_id, execution_id, logger=logger, user_id=user_id)
+                logger.info(f"Generic launcher called for {task_info}")
                 response = launcher.start_tool()
                 return response
             else:
@@ -72,12 +76,12 @@ def run_tool(api_base_url, tool_id, task_id, execution_id, user_id=None):
                 logger.info(f"Tool started successfully for task_id: {task_id}")
                 logger.info(f"Container ID: {container_id}")
 
-                send_generated_files(api_base_url, generated_files, task_id, user_id, execution_id)
+                send_generated_files(api_base_url, generated_files, task_id, execution_id, user)
                 return container_id, generated_files
             else:
                 return f"Error starting tool for task_id: {task_id}"
         else:
-            return f"Error fetching tool information for task_id: {task_id}"
+            return f"Error fetching task information for task_id: {task_id}"
     except Exception as e:
         return f"Error occurred: {e}"
 
@@ -94,4 +98,4 @@ if __name__ == '__main__': # TODO Decide whether to keep command line usage, nee
     logger = logging.getLogger(__name__)
     logger.info(f"Running tool for task_id: {args.task_id}")
     
-    run_tool(args.task_id, args.user_id)
+    run_tool(api_base_url, args.task_id, execution_id, args.user_id)
