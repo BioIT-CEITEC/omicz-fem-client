@@ -7,8 +7,8 @@ from config import config
 import requests
 
 class DockerLauncher:
-    def __init__(self, tool_info, task_id, execution_id, logger=None, user_id=None):
-        self.tool_info = tool_info
+    def __init__(self, task_info, task_id, execution_id, logger=None, user_id=None):
+        self.task_info = task_info
         self.task_id = task_id
         self.execution_id = execution_id
         self.logger = logger
@@ -18,10 +18,10 @@ class DockerLauncher:
 
     def construct_docker_command(self):
         command = ["docker", "run", "-d"]
-        memory = self.tool_info.get("info_from_tasks_collection", {}).get("memory", "")
-        device = self.tool_info.get("info_from_tasks_collection", {}).get("device", "")
-        cap_add = self.tool_info.get("info_from_tasks_collection", {}).get("cap_add", [])
-        cap_drop = self.tool_info.get("info_from_tasks_collection", {}).get("cap_drop", [])
+        memory = self.task_info.get("memory", "")
+        device = self.task_info.get("device", "")
+        cap_add = self.task_info.get("cap_add", [])
+        cap_drop = self.task_info.get("cap_drop", [])
 
         if memory:
             command += ["--shm-size=" + memory]
@@ -40,7 +40,7 @@ class DockerLauncher:
             else:
                 command += ["--cap-drop=" + cap_drop]
 
-        for volume in self.tool_info.get("info_from_tasks_collection", {}).get("volumes", []):
+        for volume in self.task_info.get("volumes", []):
             host_path = volume.get("host_path", "")
             container_path = volume.get("container_path", "")
             execution_dir = os.path.join(self.sandbox_path, self.user_id, self.execution_id)
@@ -59,11 +59,11 @@ class DockerLauncher:
                 container_path = os.environ.get(env_variable, '')
             command += ["-v", f"{host_path}:{container_path}"]
 
-        persistent = self.tool_info.get("info_from_tasks_collection", {}).get("persistent", "")
+        persistent = self.task_info.get("persistent", "")
         if persistent:
             command += ["-v", f"{self.sandbox_path}:{self.sandbox_path}"]
 
-        for var_env, var_value in self.tool_info.get("info_from_tasks_collection", {}).get("var_envs", {}).items():
+        for var_env, var_value in self.task_info.get("var_envs", {}).items():
             if var_value.startswith('$'):
                 env_variable = var_value[1:]
                 env_value = os.environ.get(env_variable, '')
@@ -71,7 +71,7 @@ class DockerLauncher:
             else:
                 command += ["-e", f"{var_env}={var_value}"]
 
-        port_mappings = self.tool_info.get("info_from_tasks_collection", {}).get("port_mappings", [])
+        port_mappings = self.task_info.get("port_mappings", [])
         if isinstance(port_mappings, list):
             for mapping in port_mappings:
                 container_port = mapping.get("container_port", "")
@@ -84,7 +84,7 @@ class DockerLauncher:
             if container_port and host_port:
                 command += ["-p", f"{host_port}:{container_port}"]
 
-        docker_image_info = self.tool_info.get("info_from_tasks_collection", {}).get("image", {})
+        docker_image_info = self.task_info.get("image", {})
         docker_image_name = docker_image_info.get("url", "")
         docker_image_cmd = docker_image_info.get("cmd", "")
 
@@ -123,8 +123,8 @@ class DockerLauncher:
             return error_message
 
 class GenericLauncher:
-    def __init__(self, tool_info, task_id, execution_id, logger=None, user_id=None):
-        self.tool_info = tool_info
+    def __init__(self, task_info, task_id, execution_id, logger=None, user_id=None):
+        self.task_info = task_info
         self.task_id = task_id
         self.execution_id = execution_id
         self.logger = logger
@@ -133,12 +133,12 @@ class GenericLauncher:
         os.makedirs(self.config_dir, exist_ok=True)
 
     def start_tool(self):
-        self.logger.info(f"Generic launcher called for {self.tool_info}")
-        source_code_info = self.tool_info.get("info_from_tasks_collection", {}).get("source_code", {}) 
+        self.logger.info(f"Generic launcher called for {self.task_info}")
+        source_code_info = self.task_info.get("source_code", {}) 
         source_code_url = source_code_info.get("url", "")
         self.logger.info(f"Fetching source code from URL: {source_code_url} for task {self.task_id}...")
 
-        if fetch_source_code(self.tool_info, self.logger):
+        if fetch_source_code(self.task_info, self.logger):
             self.logger.info(f"Source code fetched successfully for task {self.task_id}.")
             return True
         else:
