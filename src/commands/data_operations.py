@@ -1,31 +1,34 @@
-import time
-import subprocess
-from pathlib import Path
-from typing import List
+#import time
+#import subprocess
+#from pathlib import Path
+#from typing import List
 from config import config
 import os
 import requests
 import logging
 import json
-import shutil 
-from requests_toolbelt.multipart.encoder import MultipartEncoder
-import base64
+#import shutil 
+#from requests_toolbelt.multipart.encoder import MultipartEncoder
+#import base64
 import mimetypes
 
-
+api_base_url = config.api_base_url
 data_path=config.data_path
 sandbox_path=config.sandbox_path
 node_name=config.node_name
 
-def send_generated_files(api_base_url, generated_files, task_id, user_id, execution_id):
+def send_generated_files(api_base_url, generated_files, task_id, execution_id, user):
+    
+    user_id=user.get("user_id")
+    token=user.get("access_token")
     try:
         #api_url = f"https://fl.bsc.es/flmanager/API/v1/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
         api_url = f"{api_base_url}/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
 
         # Logging the attempt to send generated files
         logging.info(f"Attempting to send generated files to {api_url}")
-        auth = ("your_username", "your_password")
-        headers = {'Content-Type': 'application/json'}
+        headers = {'Content-Type': 'application/json',
+            "Authorization": f"Bearer {token}" }
 
         # Ensure generated_files is a valid list of strings
         if not isinstance(generated_files, list) or not all(isinstance(file, str) for file in generated_files):
@@ -43,7 +46,7 @@ def send_generated_files(api_base_url, generated_files, task_id, user_id, execut
         json_payload = json.dumps(payload)
 
         # Use the json parameter to automatically set Content-Type: application/json
-        response = requests.put(api_url, data=json_payload, headers=headers, auth=auth)
+        response = requests.put(api_url, data=json_payload, headers=headers)
 
         if response.ok:
             # Logging successful file send
@@ -64,41 +67,101 @@ def send_generated_files(api_base_url, generated_files, task_id, user_id, execut
 #BASE_URL = "https://fl.bsc.es/flmanager/API/v1"
 #PUSH_FILE_CONTENT_URL = f"{BASE_URL}/data/push_file_content"
 
-def send_file_bytes(api_base_url, file_uri, user_id, execution_id, username="your_username", password="your_password", timeout=60):
-    try:
+def send_file_bytes(api_base_url, sandbox_path, user, execution_id):
+    """
+    Send all files from the constructed sandbox path for a given user and execution ID.
+    
+    :param sandbox_path: The base sandbox path where the files are located.
+    :param user: Dictionary containing user details (user_id, access_token).
+    :param execution_id: The execution ID to construct the file path.
+    :param node_name: The node name to construct the file_uri.
+    :param timeout: Timeout for the HTTP request.
+    :return: Tuple (status, message)
+    """
+    user_id = user.get("user_id")
+    token = user.get("access_token")
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Construct the full directory path where files should exist
+    constructed_path = os.path.join(sandbox_path, user_id, execution_id)
+    
+    # Check if the directory exists
+    if not os.path.exists(constructed_path):
+        logging.error(f"Directory not found: {constructed_path}")
+        return False, f"Directory not found: {constructed_path}"
+
+    # Get the list of files in the directory
+    files_in_directory = os.listdir(constructed_path)
+    if not files_in_directory:
+        logging.error(f"No files found in the directory: {constructed_path}")
+        return False, f"No files found in the directory: {constructed_path}"
+
+    logging.info(f"Files found: {files_in_directory}")
+
+    # Iterate over each file and send it
+    for file_name in files_in_directory:
+        full_file_path = os.path.join(constructed_path, file_name)
+
+        if os.path.isfile(full_file_path):
+            # Construct file_uri format: node_name:user_id/execution_id/filename.txt
+            file_uri = f"{node_name}:{user_id}/{execution_id}/{file_name}"
+
+            # Construct the URL
+            url = f"{api_base_url}/data/push_file_content?user_id={user_id}&execution_id={execution_id}&sandbox_path={sandbox_path}"
+
+            result, message = send_single_file(full_file_path, url, headers, timeout)
+            if not result:
+                return False, message
+        else:
+            logging.warning(f"Skipping non-file entry: {full_file_path}")
+
+    return True, "All files in the directory have been sent successfully."
+
+#    try:
         #url = f"{PUSH_FILE_CONTENT_URL}?user_id={user_id}&execution_id={execution_id}&file_uri={file_uri}"
-        url = f"{api_base_url}/data/push_file_content/?user_id={user_id}&execution_id={execution_id}&file_uri={file_uri}"
+#        url = f"{api_base_url}/data/push_file_content/?user_id={user_id}&execution_id={execution_id}&file_uri={file_uri}"
 
         # Check if the file or directory exists
-        if not os.path.exists(file_uri):
-            # Constructing the path using the sandbox root
-            file_path = os.path.join(sandbox_path, file_uri)
-            if not os.path.exists(file_path):
-                logging.error(f"File not found: {file_path}")
-                return False, f"File not found: {file_path}"
-        else:
-            file_path = file_uri
+#        if not os.path.exists(file_uri):
+#            # Constructing the path using the sandbox root
+#            file_path = os.path.join(sandbox_path, file_uri)
+#            if not os.path.exists(file_path):
+#                logging.error(f"File not found: {file_path}")
+#                return False, f"File not found: {file_path}"
+#        else:
+#            file_path = file_uri
 
-        # Check if the path is a directory
-        if os.path.isdir(file_path):
-            logging.info(f"Directory found: {file_path}. Sending files inside the directory.")
-            # Iterate over each file in the directory and send them
-            for root, _, files in os.walk(file_path):
-                for name in files:
-                    full_path = os.path.join(root, name)
-                    result, message = send_single_file(full_path, url, username, password, timeout)
-                    if not result:
-                        return False, message
-            return True, "All files in the directory have been sent successfully."
-        else:
-            # Send the single file
-            return send_single_file(file_path, url, username, password, timeout)
+#        # Check if the path is a directory
+#        if os.path.isdir(file_path):
+#            logging.info(f"Directory found: {file_path}. Sending files inside the directory.")
+#            # Iterate over each file in the directory and send them
+#            for root, _, files in os.walk(file_path):
+#                for name in files:
+#                    full_path = os.path.join(root, name)
+#                    result, message = send_single_file(full_path, url, username, password, timeout)
+#                    if not result:
+#                        return False, message
+#            return True, "All files in the directory have been sent successfully."
+#        else:
+#            # Send the single file
+#            return send_single_file(file_path, url, username, password, timeout)
 
-    except Exception as e:
-        logging.error(f"Error sending file bytes: {e}")
-        return False, f"Error sending file bytes: {e}"
+#    except Exception as e:
+#        logging.error(f"Error sending file bytes: {e}")
+#        return False, f"Error sending file bytes: {e}"
 
-def send_single_file(file_path, url, username, password, timeout):
+def send_single_file(file_path, url, headers, timeout):
+    """
+    Sends a single file to the specified URL via HTTP POST.
+    
+    :param file_path: The path to the file to be sent.
+    :param url: The URL to send the file to.
+    :param headers: The HTTP headers to include with the request.
+    :param timeout: The timeout for the HTTP request.
+    :return: Tuple (status, message)
+    """
+
     try:
         with open(file_path, "rb") as file:
             # Determine the content type of the file
@@ -108,7 +171,7 @@ def send_single_file(file_path, url, username, password, timeout):
             files = {"files": (os.path.basename(file_path), file, mime_type)}
 
             # Send file content using HTTP POST request
-            response = requests.post(url, auth=(username, password), files=files, timeout=timeout)
+            response = requests.post(url, headers=headers, files=files, timeout=timeout)
 
         if response.status_code == 200:
             logging.info(f"File bytes sent successfully for {file_path}.")
