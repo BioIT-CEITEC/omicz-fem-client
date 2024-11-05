@@ -6,6 +6,7 @@ import time
 import ssl
 import logging
 from src.commands import *  # Assuming you have commands defined in this module
+from auth import user
 
 # Function to load configuration
 def load_configuration():
@@ -64,7 +65,7 @@ def on_request(ch, method, props, body, logger):
             logger.info(f'[.] Received command for file_uri: {file_uri}, execution_id: {execution_id}, user_id: {user_id}')
 
             # If it's a file URI, send file bytes
-            result = send_file_bytes(config.api_base_url, file_uri, user_id, execution_id)
+            result = send_file_bytes(config.api_base_url, sandbox_path, user, execution_id)
             response, command_message = result
             response_message = {"response": response, "command_message": command_message}
             logger.info(f"RESPONSE: {response}, {command_message}")
@@ -104,7 +105,7 @@ def on_request(ch, method, props, body, logger):
             tool_id, task_id, execution_id, user_id = map(str, components)
             logger.info(f'[.] Received command for tool_id: {tool_id}, task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}')
 
-            result = run_tool(config.api_base_url, tool_id, task_id, execution_id, user_id=user_id)
+            result = run_tool(config.api_base_url, task_id, execution_id, user)
             if isinstance(result, tuple):
                 response, command_message = result
             else:
