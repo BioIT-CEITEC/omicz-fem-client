@@ -10,9 +10,9 @@ import pwd
 import subprocess
 from urllib.parse import urlparse
 
-def fetch_source_code(tool_info, logger):
+def fetch_source_code(task_info, logger):
     try:
-        source_code_info = tool_info.get("info_from_tasks_collection", {}).get("source_code", {})
+        source_code_info = task_info.get("source_code", {})
         source_code_url = source_code_info.get("url", "")
         commit_hash = source_code_info.get("commit_hash", "")
         sandbox_path = config.sandbox_path
