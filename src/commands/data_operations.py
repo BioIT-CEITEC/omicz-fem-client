@@ -108,7 +108,7 @@ def send_file_bytes(api_base_url, sandbox_path, user, execution_id):
             file_uri = f"{node_name}:{user_id}/{execution_id}/{file_name}"
 
             # Construct the URL
-            url = f"{api_base_url}/data/push_file_content?user_id={user_id}&execution_id={execution_id}&sandbox_path={sandbox_path}"
+            url = f"{api_base_url}/data/push_file_content?execution_id={execution_id}&destination_folder={sandbox_path}"
 
             result, message = send_single_file(full_file_path, url, headers, timeout)
             if not result:
