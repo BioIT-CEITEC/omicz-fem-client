@@ -105,6 +105,11 @@ class DockerLauncher:
             self.logger.info(f"Executing Docker command: {full_command}")
         check = subprocess.run(full_command, shell=True, capture_output=True)
 
+        if self.logger:
+            # Log stdout and stderr from subprocess.run for both success and failure cases
+            self.logger.info(f"subprocess stdout: {check.stdout.decode().strip()}")
+            self.logger.info(f"subprocess stderr: {check.stderr.decode().strip()}")
+
         if check.returncode == 0:
             response = check.stdout.decode().strip()
             container_id = response.strip()
@@ -112,12 +117,28 @@ class DockerLauncher:
                 self.logger.info(f"Tool started successfully for task_id: {self.task_id}")
                 self.logger.info(f"Container ID: {container_id}")
 
-            logs_thread = threading.Thread(target=capture_docker_logs, args=(container_id, self.execution_id, self.task_id, self.logger, self.user_id))
-            logs_thread.start()
-            return container_id
+            if container_id:
+                if self.logger:
+                    self.logger.info(f"Starting log capture thread for container_id: {container_id}")
+                logs_thread = threading.Thread(
+                    target=capture_docker_logs,
+                    args=(container_id, self.execution_id, self.task_id, self.logger, self.user_id)
+                )
+                logs_thread.start()
+                return container_id
+            else:
+                error_message = f"No container ID received for task_id {self.task_id}"
+                if self.logger:
+                    self.logger.error(error_message)
+                return error_message
+
 
         else:
-            error_message = f"Error starting Docker tool for task_id {self.task_id}.\nExit code: {check.returncode}\nError output: {check.stderr.decode()}"
+            error_message = (
+                f"Error starting Docker tool for task_id {self.task_id}.\n"
+                f"Exit code: {check.returncode}\n"
+                f"Error output: {check.stderr.decode().strip()}"
+            )
             if self.logger:
                 self.logger.error(error_message)
             return error_message

@@ -44,14 +44,16 @@ def run_tool(api_base_url, task_id, execution_id, user):
 
             if launcher_type.lower() == "docker":
                 launcher = DockerLauncher(task_info, task_id, execution_id, logger=logger, user_id=user_id)
+                logger.info("Attempting to start Docker launcher...")
                 container_id = launcher.start_tool()
+                logger.info(f"Container ID after starting tool: {container_id}")
                 config_dir = os.path.join(config.sandbox_path, "config", task_id)
                 os.makedirs(config_dir, exist_ok=True)
                 if container_id:
                     time.sleep(5)  
                     generated_files = os.listdir(os.path.join(config.sandbox_path, user_id, execution_id))
                     logger.info(f"Tool started successfully for task_id: {task_id}")
-                    logger.info(f"Container ID: {container_id}")
+                    logger.info(f"Container ID: {container_id}, generated_files: {generated_files}")
 
                     send_generated_files(api_base_url, generated_files, task_id, execution_id, user)
                     return container_id, generated_files
@@ -63,7 +65,7 @@ def run_tool(api_base_url, task_id, execution_id, user):
                 response = launcher.start_tool()
                 return response
             else:
-                #logger.info(f"launcher: {launcher_type}")
+                logger.info(f"else loop pre_checks: {pre_checks_result}")
                 return pre_checks_result
 
             # Start the tool using the appropriate launcher
