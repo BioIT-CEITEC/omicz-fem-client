@@ -17,10 +17,8 @@ data_path=config.data_path
 sandbox_path=config.sandbox_path
 node_name=config.node_name
 
-def send_generated_files(api_base_url, generated_files, task_id, execution_id, user):
+def send_generated_files(api_base_url, generated_files, task_id, execution_id, user_id, token):
     
-    user_id=user.get("user_id")
-    token=user.get("access_token")
     try:
         #api_url = f"https://fl.bsc.es/flmanager/API/v1/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
         api_url = f"{api_base_url}/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
@@ -67,7 +65,7 @@ def send_generated_files(api_base_url, generated_files, task_id, execution_id, u
 #BASE_URL = "https://fl.bsc.es/flmanager/API/v1"
 #PUSH_FILE_CONTENT_URL = f"{BASE_URL}/data/push_file_content"
 
-def send_file_bytes(api_base_url, sandbox_path, user, execution_id):
+def send_file_bytes(api_base_url, sandbox_path, user_id, token, execution_id):
     """
     Send all files from the constructed sandbox path for a given user and execution ID.
     
@@ -78,9 +76,6 @@ def send_file_bytes(api_base_url, sandbox_path, user, execution_id):
     :param timeout: Timeout for the HTTP request.
     :return: Tuple (status, message)
     """
-    user_id = user.get("user_id")
-    token = user.get("access_token")
-
     headers = {"Authorization": f"Bearer {token}"}
 
     # Construct the full directory path where files should exist
@@ -108,9 +103,9 @@ def send_file_bytes(api_base_url, sandbox_path, user, execution_id):
             file_uri = f"{node_name}:{user_id}/{execution_id}/{file_name}"
 
             # Construct the URL
-            url = f"{api_base_url}/data/push_file_content?execution_id={execution_id}&destination_folder={sandbox_path}"
+            url = f"{api_base_url}/data/push_file_content?execution_id={execution_id}"
 
-            result, message = send_single_file(full_file_path, url, headers, timeout)
+            result, message = send_single_file(full_file_path, url, headers)
             if not result:
                 return False, message
         else:
@@ -151,7 +146,7 @@ def send_file_bytes(api_base_url, sandbox_path, user, execution_id):
 #        logging.error(f"Error sending file bytes: {e}")
 #        return False, f"Error sending file bytes: {e}"
 
-def send_single_file(file_path, url, headers, timeout):
+def send_single_file(file_path, url, headers, timeout=30):
     """
     Sends a single file to the specified URL via HTTP POST.
     
