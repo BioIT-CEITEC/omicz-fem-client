@@ -6,7 +6,6 @@ import time
 import ssl
 import logging
 from src.commands import *  # Assuming you have commands defined in this module
-from auth import user
 
 # Function to load configuration
 def load_configuration():
@@ -57,15 +56,16 @@ def on_request(ch, method, props, body, logger):
         logger.info(f'[.] Received command {components}')
         response_message = {} 
         
-        if components[0] == 'None':
+        #if components[0] == 'None':
+        if len(components) == 4:
             logger.info(f'[.] Received command {components}')
-            file_uri, execution_id, user_id = map(str, components[1:])
+            file_uri, execution_id, user_id, token = map(str, components)
             tool_id = None
             task_id = None
             logger.info(f'[.] Received command for file_uri: {file_uri}, execution_id: {execution_id}, user_id: {user_id}')
 
             # If it's a file URI, send file bytes
-            result = send_file_bytes(config.api_base_url, sandbox_path, user, execution_id)
+            result = send_file_bytes(config.api_base_url, sandbox_path, user_id=user_id, token=token, execution_id=execution_id)
             response, command_message = result
             response_message = {"response": response, "command_message": command_message}
             logger.info(f"RESPONSE: {response}, {command_message}")
@@ -84,7 +84,8 @@ def on_request(ch, method, props, body, logger):
 
         elif len(components) == 3:
             #logger.info(f"components: {components}")
-            folder, execution_id, user_id = map(str, components[0:])
+            file, execution_id, user_id, token = map(str, components[0:])
+            folder = execution_id
             file_list = list_files(user_id, folder)
             response_message = {"response": "success", "file_list": file_list}
             logger.info(f"RESPONSE: success, file_list: {file_list}")
@@ -101,11 +102,11 @@ def on_request(ch, method, props, body, logger):
             )
             logger.info(f"[.] Done processing folder: {folder}, execution_id: {execution_id}, user_id: {user_id}")
  
-        elif len(components) == 4 and components[0] != "None":
-            tool_id, task_id, execution_id, user_id = map(str, components)
+        elif len(components) == 5 and components[0] != "None":
+            tool_id, task_id, execution_id, user_id, token = map(str, components)
             logger.info(f'[.] Received command for tool_id: {tool_id}, task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}')
 
-            result = run_tool(config.api_base_url, task_id, execution_id, user)
+            result = run_tool(config.api_base_url, task_id, execution_id, user_id)
             if isinstance(result, tuple):
                 response, command_message = result
             else:
