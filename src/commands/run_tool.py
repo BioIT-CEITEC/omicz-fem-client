@@ -23,9 +23,7 @@ def fetch_task_info(api_base_url, task_id):
         return None
 
 
-def run_tool(api_base_url, task_id, execution_id, user):
-
-    user_id=user.get("user_id")
+def run_tool(api_base_url, task_id, execution_id, user_id):
 
     try:
         logger = logging.getLogger("receiver")
