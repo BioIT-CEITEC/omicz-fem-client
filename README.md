@@ -41,24 +41,16 @@ The minimal client connectivity requirements to be part of an FEM-enabled federa
 `git clone https://gitlab.bsc.es/fl/fem-client.git`
 
 2. Navigate to the project directory:
-`cd FEM-client`
+`cd fem-client`
 
-3. Setup config file
+3. Setup config file (clone the config repository and follow the instructions writen on its README file):
 ```
-cp config/config_template.py config/setup/config.ini
+git clone https://gitlab.bsc.es/fl/fem-client.git
 ```
-4. 	Install SSL certificates at the config folder
-```
-cd config/
-bash generate_certs.sh
-```
-5. Install the required Python packages:
-`bash install.sh`
+Once the config folder is set-up:
 
 6. Start the Client
 ```
-bash start.sh
-# or
 bash setup_service.sh
 ```
 
