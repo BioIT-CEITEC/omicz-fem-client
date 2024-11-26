@@ -77,7 +77,7 @@ SERVICE_FILE=$SYSTEMD_USER_DIR/$SERVICE_NAME.service
 
 cat <<EOL > $SERVICE_FILE
 [Unit]
-Description=FLmanager client (receiver) service
+Description=FEM-client (receiver) service
 After=network.target
 
 [Service]
