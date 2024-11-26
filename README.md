@@ -45,7 +45,7 @@ The minimal client connectivity requirements to be part of an FEM-enabled federa
 
 3. Setup config file (clone the config repository and follow the instructions writen on its README file):
 ```
-git clone https://gitlab.bsc.es/fl/fem-client.git
+git clone https://gitlab.bsc.es/fl/dt4h-fem-client-config.git
 ```
 Once the config folder is set-up:
 
