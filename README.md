@@ -15,10 +15,6 @@ The key functions of the FEM client include:
 - **Task execution**: it executes tasks in the local infraestructure delegating the resources managment the customizable executors or launchers. Default executor: "docker".
 - **Task stage-out**: it exchanging the necessary task outfiles and logging files with the central orchestrator.
 
-# Related Repositories
-- FEM-orchestrator: https://github.com/DataTools4Heart/FEM-orchestrator
-- dt4h-FEM-client-config: https://gitlab.bsc.es/fl/eucaim-fem-client-config
-
 ## Prerequisites
 
 For deploying either an FEM server or client, the minimal technical requirements are:
