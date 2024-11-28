@@ -17,7 +17,7 @@ The key functions of the FEM client include:
 
 # Related Repositories
 - FEM-orchestrator: https://github.com/DataTools4Heart/FEM-orchestrator
-- dt4h-FEM-client-config: https://github.com/DataTools4Heart/dt4h-FEM-client-config
+- dt4h-FEM-client-config: https://gitlab.bsc.es/fl/eucaim-fem-client-config
 
 ## Prerequisites
 
