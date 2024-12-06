@@ -106,7 +106,7 @@ def on_request(ch, method, props, body, logger):
             tool_id, task_id, execution_id, user_id, token = map(str, components)
             logger.info(f'[.] Received command for tool_id: {tool_id}, task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}')
 
-            result = run_tool(config.api_base_url, task_id, execution_id, user_id)
+            result = run_tool(config.api_base_url, task_id, execution_id, user_id,token)
             if isinstance(result, tuple):
                 response, command_message = result
             else:
