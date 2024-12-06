@@ -16,7 +16,7 @@ def check_installations():
         logging.info(f'EXECUTING COMMAND: {command}')
         check = subprocess.run(command, shell=True, capture_output=True)
         response = check.stdout.decode()
-        logging.info(response)
+        #logging.info(response)
         return response
     except Exception as e:
         logging.error(f"Error calling Docker. If the user running the bash script is not part of the docker group, please add it with the following commands: 1) `sudo groupadd docker`, 2)`sudo usermod -aG docker $USER`, 3)`newgrp docker`.\nTraceback: {e}")
@@ -134,7 +134,7 @@ def pre_checks():
     )
 
     # Log the summary for reference
-    logging.info("RESPONSE:\n%s", result_summary)
+    #logging.info("RESPONSE:\n%s", result_summary)
 
     return result_summary
 
