@@ -3,7 +3,8 @@ import os
 import argparse
 import logging
 import time
-from .launcher import * 
+import subprocess
+import re
 from .utils import *
 from .data_operations import *
 from .check_resources import *
@@ -23,67 +24,251 @@ def fetch_task_info(api_base_url, task_id):
         return None
 
 
-def run_tool(api_base_url, task_id, execution_id, user_id):
+def replace_api_placeholders(cmd, config_json):
+    """
+    Replaces placeholders in the cmd string surrounded by {} with corresponding values from the config JSON.
+    - Handles lists by repeating flags for each item in the list.
+    - Handles dictionaries by converting them to JSON strings.
+    - Retains single quotes around the placeholder while replacing.
+    """
+    # Find all placeholders in the command surrounded by {}
+    placeholders = re.findall(r'{([^}]+)}', cmd)
 
+    for placeholder in placeholders:
+        # Get the replacement value from the config JSON under "submit_run"
+        replacement_value = config_json.get("submit_run", {}).get(placeholder)
+
+        if replacement_value is None:
+            # Log missing placeholder for debugging
+            logging.info(f"No value found for placeholder: {placeholder}. Leaving as is.")
+            cmd = cmd.replace(f"\'{{{placeholder}}}\'", '')
+            continue
+
+        if isinstance(replacement_value, list):
+            # If the replacement is a list, repeat the flag for each item in the list
+            flag_match = re.search(r'(-\w+)\s*\'\{' + re.escape(placeholder) + '\}\'', cmd)  # Modified pattern
+            if flag_match:
+                flag_name = flag_match.group(1)  # Extract the flag, e.g., "-H"
+                logging.info(f"flag: {flag_name}")
+                # Apply '-H' to each item in the list and wrap each with single quotes
+                repeated_flags = " ".join(
+                    f"{flag_name} '{strip_quotes(str(item))}'" for item in replacement_value
+                )
+                cmd = re.sub(rf'{re.escape(flag_name)}\s*\'\{{{placeholder}}}\'' , repeated_flags, cmd)
+            else:
+                # Handle the list without a flag, wrap each item in single quotes
+                logging.info(f"Flag not found for placeholder: {placeholder}. Replacing without flag.")
+                repeated_values = " ".join(f"'{strip_quotes(str(item))}'" for item in replacement_value)
+                cmd = cmd.replace(f"\'{{{placeholder}}}\'", repeated_values)
+
+        elif isinstance(replacement_value, dict):
+            # Convert dictionaries to JSON strings and wrap with single quotes
+            replacement_value = json.dumps(replacement_value)
+            cmd = cmd.replace(f"\'{{{placeholder}}}\'", f"'{replacement_value}'")  # Keep quotes
+
+        else:
+            # Replace the placeholder with the value directly, stripping quotes and wrapping with single quotes
+            cmd = cmd.replace(f"\'{{{placeholder}}}\'", f"'{strip_quotes(str(replacement_value))}'")
+
+    # Log final cmd for debugging
+    logging.info(f"Command after replacing API placeholders: {cmd}")
+
+    return cmd
+
+def strip_quotes(value):
+    """
+    Removes initial and final double quotes from a string if present.
+    """
+    if value.startswith('"') and value.endswith('"'):
+        return value[1:-1]
+    return value
+
+
+
+def clean_composed_command(command):
+    # This regex pattern matches flags with optional values and checks for empty values after the '='
+    pattern = r'(--?\w+[-\w]*)(=)([^\s-]*)'  # matches flag=-value (allowing for no value)
+    
+    # Function to process and remove the invalid arguments
+    def replace_invalid_arguments(match):
+        flag, equal_sign, value = match.groups()
+        # If the value is empty (or a flag starts with a '-'), skip this argument
+        if not value or re.match(r"^-\w", value):  
+            return ""  # Remove this argument entirely
+        return match.group(0)  # Return the match as it is if the value is valid
+
+    # Apply regex replacement to the command
+    cleaned_command = re.sub(pattern, replace_invalid_arguments, command)
+    
+    # Check if the last element is a flag or flag followed by '=' with no value
+    # This pattern checks if the last part is a flag or a flag with '=' but no value after it
+    cleaned_command = re.sub(r'(--?\w+[-\w]*)(=?)(\s*)$', '', cleaned_command)
+
+    # Clean up extra spaces (if any) after removal of arguments
+    cleaned_command = re.sub(r'\s+', ' ', cleaned_command).strip()
+    
+    return cleaned_command
+
+def run_tool(api_base_url, task_id, execution_id, user_id, token):
+    
     try:
         logger = logging.getLogger("receiver")
+        logger.info(f"Starting tool for task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}")
+        
+        # Load the JSON launcher configuration
+        json_launcher_path = config.json_launcher
+        logger.info(f"json_launcher: {json_launcher_path}")
+        if not json_launcher_path or not os.path.isfile(json_launcher_path):
+            raise FileNotFoundError(f"JSON launcher configuration file not found at: {json_launcher_path}")
+        
+        with open(json_launcher_path, "r") as json_file:
+            json_config = json.load(json_file)
 
-        # Perform pre-checks if specified in the tool entry
-        #tool_info = fetch_tool_info(api_base_url, task_id)
+        #Fetch Task info from the DDBB
         task_info = fetch_task_info(api_base_url, task_id)
         if task_info:
             pre_checks_result = pre_checks()
+            #logger.info(f"task_info: {task_info}")
             #logger.info(f"Pre-checks result: {pre_checks_result}")
+        
+        if task_id == "health-check":
+            return pre_checks_result
+        
+        # Extract command and arguments from the JSON
+        cmd = json_config.get("submit_run", {}).get("cmd", {})
+        if not cmd:
+            raise ValueError("Command to run is not defined in the JSON configuration")
+        
+        if json_config.get("type") == "API":
+            cmd = replace_api_placeholders(cmd, json_config) 
 
-            # Determine the launcher type
-            launcher_type = task_info.get("launcher", "")
-            if isinstance(launcher_type, list) and launcher_type:
-                launcher_type = launcher_type[0]
+        # Extract task_info_vars mapping
+        task_info_vars = json_config.get("task_info_vars", {})
 
-            if launcher_type.lower() == "docker":
-                launcher = DockerLauncher(task_info, task_id, execution_id, logger=logger, user_id=user_id)
-                logger.info("Attempting to start Docker launcher...")
-                container_id = launcher.start_tool()
-                logger.info(f"Container ID after starting tool: {container_id}")
-                config_dir = os.path.join(config.sandbox_path, "config", task_id)
-                os.makedirs(config_dir, exist_ok=True)
-                if container_id:
-                    time.sleep(5)  
-                    generated_files = os.listdir(os.path.join(config.sandbox_path, user_id, execution_id))
-                    logger.info(f"Tool started successfully for task_id: {task_id}")
-                    logger.info(f"Container ID: {container_id}, generated_files: {generated_files}")
+        # Replace placeholders in the cmd with environment variables
+        placeholder_pattern = re.compile(r"%%(.*?)%%")
+        resolved_cmd = cmd
+        
+        # Find all placeholders in the command string
+        placeholders = placeholder_pattern.findall(cmd)
 
-                    send_generated_files(api_base_url, generated_files, task_id, execution_id, user)
-                    return container_id, generated_files
-                else:
-                    return f"Error starting tool for task_id: {task_id}"
-            elif launcher_type.lower() == "generic":
-                launcher = GenericLauncher(task_info, task_id, execution_id, logger=logger, user_id=user_id)
-                logger.info(f"Generic launcher called for {task_info}")
-                response = launcher.start_tool()
-                return response
-            else:
-                logger.info(f"else loop pre_checks: {pre_checks_result}")
-                return pre_checks_result
+        # Function arguments to check for placeholders
+        argument_values = {
+            "api_base_url": api_base_url,
+            "task_id": task_id,
+            "execution_id": execution_id,
+            "user_id": user_id,
+            "token": token
+        }
 
-            # Start the tool using the appropriate launcher
-            container_id = launcher.start_tool()
-            config_dir = os.path.join(config.sandbox_path, "config", task_id)
-            os.makedirs(config_dir, exist_ok=True)
-            if container_id:
-                time.sleep(5)  
-                generated_files = os.listdir(os.path.join(config.sandbox_path, user_id, execution_id))
-                logger.info(f"Tool started successfully for task_id: {task_id}")
-                logger.info(f"Container ID: {container_id}")
+        for placeholder in placeholders:
+            # Try resolving the placeholder from function arguments
+            if placeholder in argument_values:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
+                continue
 
-                send_generated_files(api_base_url, generated_files, task_id, execution_id, user)
-                return container_id, generated_files
-            else:
-                return f"Error starting tool for task_id: {task_id}"
+            # Try resolving the placeholder from environment variables
+            env_value = os.environ.get(placeholder)
+            if env_value is not None:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
+                continue
+
+            # Then, try resolving from task_info using task_info_vars
+            task_info_path = task_info_vars.get(placeholder)
+            if task_info_path:
+                if isinstance(task_info_path, list):  # Resolve nested keys
+                    value = task_info
+                    for key in task_info_path:
+                        if value is None:  # If any level is missing, stop
+                            break
+                        value = value.get(key)
+                    if value is not None:
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                        continue
+                elif isinstance(task_info_path, str):  # Resolve top-level keys
+                    value = task_info.get(task_info_path)
+                    if value is not None:
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                        continue
+
+            # If the placeholder cannot be resolved, raise an error
+            raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
+        
+        resolved_cmd = clean_composed_command(resolved_cmd)
+
+        logger.info(f"Resolved command: {resolved_cmd}")
+        
+        # Run the command
+        process = subprocess.run(resolved_cmd, shell=True, capture_output=True)
+
+        # If the image is not found, handle the error
+        if process.returncode != 0:
+            stderr = process.stderr.decode().strip()
+            if "Unable to find image" in stderr:
+                logger.info("Docker image not found. Attempting docker pull...")
+
+                # Get source code URL from task_info
+                image_url = task_info.get("image", {}).get("url")
+                if image_url:
+                    # Attempt to pull the Docker image using the URL
+                    pull_command = f"docker pull {image_url}"
+                    pull_process = subprocess.run(pull_command, shell=True, capture_output=True)
+                    
+                    if pull_process.returncode == 0:
+                        logger.info(f"Docker image {image_url} pulled successfully.")
+
+                        # Re-run the Docker command
+                        process = subprocess.run(resolved_cmd, shell=True, capture_output=True)
+        
+        if process.returncode == 0:
+            response = process.stdout.decode().strip()
+            logger.info(f"Command executed successfully: {response}")
+            
+            # Simulate capturing container ID (Docker outputs the container ID on success)
+            container_id = response.strip()  # The container ID should be the first line of stdout
+            
+            # Log container ID and proceed with file generation simulation
+            logger.info(f"Container ID: {container_id}")
+            
+            # Simulate capturing logs (you can adapt this to your own log capture function if needed)
+            logger.info(f"Starting log capture for container: {container_id}")
+            # Assuming `capture_docker_logs` function exists to capture logs from the container
+            logs_thread = threading.Thread(
+                target=capture_docker_logs, 
+                args=(container_id, execution_id, task_id, logger, user_id)
+            )
+            logs_thread.start()
+            
+            # Simulate waiting for files to be generated (this can be replaced with a more accurate wait/check)
+            # sandbox_path = os.environ.get("SANDBOX_PATH", "/sandbox")
+            # generated_files_path = os.path.join(sandbox_path, user_id, execution_id)
+            # time.sleep(5)  # Adjust this depending on how long the container takes to generate the files
+            
+            # # Assuming files are generated in this folder, list them
+            # if os.path.exists(generated_files_path):
+            #     generated_files = os.listdir(generated_files_path)
+            #     logger.info(f"Generated files: {generated_files}")
+            #     send_generated_files(api_base_url, generated_files, task_id, execution_id, user_id, token)
+                
+            #     return response, generated_files
+            # else:
+            #     error_message = f"Generated files not found at {generated_files_path}"
+            #     logger.error(error_message)
+            #     return error_message
         else:
-            return f"Error fetching task information for task_id: {task_id}"
+            error_message = (
+                f"Error executing command.\n"
+                f"Exit code: {process.returncode}\n"
+                f"Stdout: {process.stdout.decode().strip()}\n"
+                f"Stderr: {process.stderr.decode().strip()}"
+            )
+            logger.error(error_message)
+            return error_message
     except Exception as e:
-        return f"Error occurred: {e}"
+        error_message = f"An error occurred: {e}"
+        logger.info(error_message)
+        return error_message
+
 
 
 if __name__ == '__main__': # TODO Decide whether to keep command line usage, needs to read config
