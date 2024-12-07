@@ -1,9 +1,6 @@
-import shutil
 from urllib.parse import urlparse
 from config import config
 import subprocess
-import logging 
-import argparse
 
 import os
 import pwd
@@ -58,41 +55,48 @@ def fetch_source_code(task_info, logger):
 
 def capture_docker_logs(container_id, execution_id, task_id, logger, user_id=None):
     try:
-        # Create a folder for the user if user_id is defined
-        if user_id:
-            user_folder = os.path.join(config.sandbox_path, user_id)
-            os.makedirs(user_folder, exist_ok=True)
-        else:
-            user_folder = config.sandbox_path
+        # Create directories for logs
+        user_folder = os.path.join('sandbox', user_id) if user_id else 'sandbox'
+        os.makedirs(user_folder, exist_ok=True)
 
-        # Create a folder for the execution inside the user folder
         execution_folder = os.path.join(user_folder, execution_id)
         os.makedirs(execution_folder, exist_ok=True)
-        #logs_folder = os.path.join(execution_folder, "logs")
-        #os.makedirs(logs_folder, exist_ok=True)
-        # Open the logs file for appending with task_id
+        if not os.path.exists(execution_folder):
+            raise RuntimeError(f"Execution folder {execution_folder} could not be created.")
+
+        # Define log file path
         docker_logs_file = os.path.join(execution_folder, f"{task_id}_docker_logs.txt")
+        logger.info(f"Log file path: {docker_logs_file}")
+
+        # Check container state (Running or Exited)
+        status_command = f"docker inspect -f '{{{{.State.Running}}}}' {container_id}"
+        status_process = subprocess.run(
+            status_command, shell=True, capture_output=True, text=True
+        )
+        is_running = status_process.stdout.strip().lower() == "true"
+
+        # Choose appropriate command based on state
+        logs_command = f"docker logs {container_id}" if not is_running else f"docker logs -f {container_id}"
+        logger.info(f"Logs command: {logs_command}, Running: {is_running}")
+
+        # Fetch logs
         with open(docker_logs_file, "a") as log_file:
-            log_file.write(f"\n\n[Container ID: {container_id}]\n")
+            process = subprocess.Popen(
+                logs_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            )
+            for line in iter(process.stdout.readline, ""):
+                log_file.write(line)
+                log_file.flush()  # Ensure immediate writes to disk
+                #logger.info(line.strip())  # Optional: Log to console for debugging
 
-        # Start a background process to continuously capture logs
-        logs_command = f"docker logs -f {container_id}"
-        process = subprocess.Popen(logs_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-
-        # Continuously append logs to the execution logs file until the container stops
-        while process.poll() is None:
-            logs_output = process.stdout.readline()
-            if logs_output:
-                with open(docker_logs_file, "a") as log_file:
-                    log_file.write(logs_output)
-
-        # Log container exit information
-        exit_code = process.returncode
-        logger.info(f"Container exited with code: {exit_code}")
+            process.wait()  # Wait for the logs process to finish
+            logger.info(f"Container {container_id} logs capture completed.")
 
     except Exception as e:
-        # Log exception information
-        logger.error(f"Error capturing Docker logs: {e}, user_id: {user_id}")
+        logger.error(f"Error capturing logs for container {container_id}: {e}")
+
+
+
 
 
 def manage_docker_container(action, container_name):
