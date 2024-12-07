@@ -1,0 +1,20 @@
+services:
+  fem-client:
+    build: ./
+    container_name: fem-client
+    image: fem-client-image
+    user: "${UID}:${GID}" 
+    environment:
+      - UID=${UID}
+      - GID=${GID}
+    volumes:
+      - ./:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DATA_PATH}:/app/data:ro
+      - ${SANDBOX_PATH}:/app/sandbox:shared
+    ports:
+      - "8080:8080"
+    restart: always
+    stdin_open: true
+    tty: true
+    command: sh -c "chown -R ${UID}:${GID} /app/sandbox && python3 receiver.py"
