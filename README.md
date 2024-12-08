@@ -56,7 +56,7 @@ bash setup_service.sh
 
 
 7. Monitor the receiver:
-`tail -f receiver.log`
+`docker logs -f fem-client`
 
 ## How to set up a new FEM tool
 
