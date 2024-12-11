@@ -33,11 +33,11 @@ RUN groupmod -g ${GID} defaultgroup && \
     usermod -u ${UID} -g ${GID} defaultuser && \
     chown -R ${UID}:${GID} /home/defaultuser
 
+# Copy the entire current directory into the container
+COPY ./app/ /app/
+
 # Set the working directory inside the container
 WORKDIR /app
-
-# Copy the entire current directory into the container
-COPY . /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
