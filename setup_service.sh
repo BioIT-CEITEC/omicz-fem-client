@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Log file for setup
-LOG_FILE="./receiver.log"
+LOG_FILE="./app/receiver.log"
 touch "$LOG_FILE"
 chmod 666 "$LOG_FILE"
 
@@ -26,13 +26,13 @@ echo "Resolved data_path: $DATA_PATH"
 echo "Resolved sandbox_path: $SANDBOX_PATH"
 
 # Run the docker compose command, redirecting stdout and stderr to receiver.log
-docker compose up -d --build >> receiver.log 2>&1
+docker compose up -d >> $LOG_FILE 2>&1
 
 # Check if Docker Compose command was successful
 if [ $? -eq 0 ]; then
-    echo "Docker Compose successfully started." >> receiver.log
+    echo "Docker Compose successfully started." >> $LOG_FILE
 else
-    echo "Docker Compose encountered an error." >> receiver.log
+    echo "Docker Compose encountered an error." >> $LOG_FILE
 fi
 
 echo "Setup complete."
