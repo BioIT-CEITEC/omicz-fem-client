@@ -49,14 +49,30 @@ git clone https://gitlab.bsc.es/fl/{project_name}-fem-client-config.git
 ```
 Once the config folder is set-up:
 
-6. Start the Client
+4. Start the Client
 ```
 bash setup_service.sh
 ```
 
-
-7. Monitor the receiver:
+5. Monitor the receiver:
 `docker logs -f fem-client`
+
+
+## Installing from the image
+
+If the process fails during the 'docker build', there is an option to download the pre-built image of this project: 
+
+1. Download the image from the docker registry. The credentials to log in are the same username and password used to access GitLab.
+```
+docker login gitlab.bsc.es
+docker pull registry.gitlab.bsc.es/fl/fem-client:v1.0
+docker logout #optional, if you don't want to keep logged in in this machine
+```
+2. Once the download is finished, check that docker can find ir with the following command:
+`docker images`
+
+If the 'registry.gitlab.bsc.es/fl/fem-client' is listed there, follow steps **1-5 of the 'Getting started' section**, and the docker-copose will run the project from the image instead of building it from scratch.
+
 
 ## How to set up a new FEM tool
 
