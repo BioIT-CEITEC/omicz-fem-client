@@ -68,7 +68,6 @@ If you are an AI developer and want to run a new AI tool using FEM, follow these
    - You can find a tool plan and task template along the schemas in the docs/templates folder so you can fill and provide the necessary details about your tool, including Docker image information or Git repository.
 
 3. **Follow the standard FEM client setup instructions:**
-   `bash install.sh` and `bash start.sh`
 
 4. **Execute the FEM client:**
    - Start the federated learning process with your model calling the API.
