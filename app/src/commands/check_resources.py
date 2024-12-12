@@ -33,8 +33,8 @@ def check_gpu():
         return response
 
 def check_paths():
-    sandbox_path = Path(config.sandbox_path)
-    data_path = Path(config.data_path)
+    sandbox_path = Path("/app/sandbox")
+    data_path = Path("/app/data")
     response = ""
 
     if not data_path.exists():
