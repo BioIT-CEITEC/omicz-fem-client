@@ -1,6 +1,5 @@
 import json
 import os
-import argparse
 import logging
 import subprocess
 import re
@@ -46,7 +45,7 @@ def replace_api_placeholders(cmd, config_json):
 
         if isinstance(replacement_value, list):
             # If the replacement is a list, repeat the flag for each item in the list
-            flag_match = re.search(r'(-\w+)\s*\'\{' + re.escape(placeholder) + '\}\'', cmd)  # Modified pattern
+            flag_match = re.search(r'(-\w+)\s*\'\{' + re.escape(placeholder) + '\}\'', cmd)  
             if flag_match:
                 flag_name = flag_match.group(1)  # Extract the flag, e.g., "-H"
                 logging.info(f"flag: {flag_name}")
@@ -83,7 +82,81 @@ def strip_quotes(value):
         return value[1:-1]
     return value
 
+def template_format(data, template):
+    """
+    This function takes either a dictionary or a list of dictionaries as input and applies a string template 
+    to generate formatted strings. The template placeholders are dynamically replaced with the corresponding 
+    key-value pairs from the data. 
+    """
+    final_strings = []
+    # Check if the data is a list of dictionaries
+    if isinstance(data, list):
+        for item in data:
+            # Use **item to unpack keys and values into the template
+            final_strings.append(template.format(**item))
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            # For flat dictionaries, format with key and value
+            final_strings.append(template.format(key=key, value=value))
+    else:
+        raise ValueError("Data must be a dictionary or a list of dictionaries")
+    
+    return final_strings
 
+
+def build_cwl_command(task_command, parametric_args=None):
+    """
+    This function builds a cmd string builded from the cwl compatible information iside the 'command' block of the DDBB
+    """
+    # Extract the base command and args from task_command
+    base_command = task_command['base']
+    args = task_command.get('args', [])
+
+    # Validate that 'args' is a list
+    if not isinstance(args, list):
+        raise TypeError(f"'args' must be a list, but got {type(args).__name__}")
+
+    # If args is empty, return just the base command
+    if not args:
+        return base_command
+
+    # Validate that each item in 'args' is a dictionary
+    if not all(isinstance(arg, dict) for arg in args):
+        raise ValueError("Each item in 'args' must be a dictionary.")
+
+    # Sort args based on the 'position' key if it exists
+    args = sorted(args, key=lambda x: x.get('position', float('inf')) if 'position' in x else float('inf'))
+
+    # Build the command
+    command_parts = [base_command]
+
+    # Loop through arguments
+    for arg in args:
+        arg_id = arg['id']
+        default_value = arg['default_value']
+        prefix = arg['prefix']
+        separate = arg['separate']
+        required = arg['required']
+
+        # Determine the value to use
+        if parametric_args and arg_id in parametric_args:
+            value = parametric_args[arg_id]
+        elif required:
+            if default_value != "":
+                value = default_value
+            else:
+                raise ValueError(f"Required argument '{arg_id}' is missing and has no default value.")
+        else:
+            continue
+
+        # Add the argument to the command if it has a value
+        if separate:
+            command_parts.append(f"{prefix} {value}")
+        else:
+            command_parts.append(f"{prefix}{value}")
+
+    # Join the command parts with spaces and return
+    return ' '.join(command_parts)
 
 def clean_composed_command(command):
     # This regex pattern matches flags with optional values and checks for empty values after the '='
@@ -139,17 +212,17 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token):
         if not cmd:
             raise ValueError("Command to run is not defined in the JSON configuration")
         
-        if json_config.get("type") == "API":
+        if cmd.startswith('curl -X'):
             cmd = replace_api_placeholders(cmd, json_config) 
 
-        # Extract task_info_vars mapping
+        # Extract mapping dictionaries from the json_config
         task_info_vars = json_config.get("task_info_vars", {})
+        system_var_handler = json_config.get("system_var_handler", {})
 
-        # Replace placeholders in the cmd with environment variables
+        # Find all placeholders in the command string
         placeholder_pattern = re.compile(r"%%(.*?)%%")
         resolved_cmd = cmd
         
-        # Find all placeholders in the command string
         placeholders = placeholder_pattern.findall(cmd)
 
         # Function arguments to check for placeholders
@@ -162,6 +235,21 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token):
         }
 
         for placeholder in placeholders:
+            # Build the task_command with the CWL format for that specific placeholder:
+            if placeholder == "TASK_COMMAND":
+                task_command = task_info.get("command")
+                value = build_cwl_command(task_command, parametric_args=None)
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                continue
+
+            # Replace the placeholders that need the system template:
+            if placeholder in system_var_handler:
+                task_info_data = task_info.get(placeholder.lower())
+                sys_template = system_var_handler.get(placeholder)
+                value = template_format(task_info_data, sys_template)
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
+                continue
+
             # Try resolving the placeholder from function arguments
             if placeholder in argument_values:
                 resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
@@ -271,16 +359,16 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token):
 
 
 
-if __name__ == '__main__': # TODO Decide whether to keep command line usage, needs to read config
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task_id", help="ID of the task to run", type=str)
-    parser.add_argument("--user_id", help="User ID", type=str)
-    args = parser.parse_args()
+# if __name__ == '__main__': # TODO Decide whether to keep command line usage, needs to read config
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--task_id", help="ID of the task to run", type=str)
+#     parser.add_argument("--user_id", help="User ID", type=str)
+#     args = parser.parse_args()
     
     
-    logging.basicConfig(level=logging.INFO)
+#     logging.basicConfig(level=logging.INFO)
     
-    logger = logging.getLogger(__name__)
-    logger.info(f"Running tool for task_id: {args.task_id}")
+#     logger = logging.getLogger(__name__)
+#     logger.info(f"Running tool for task_id: {args.task_id}")
     
-    run_tool(api_base_url, args.task_id, execution_id, args.user_id)
+#     run_tool(api_base_url, args.task_id, execution_id, args.user_id)
