@@ -5,8 +5,9 @@ services:
     image: registry.gitlab.bsc.es/fl/fem-client:v1.0
     user: "${UID}:${GID}" 
     environment:
-      - UID=${UID}
-      - GID=${GID}
+      - UID=$UID
+      - GID=$GID
+      - HOST_FEMC_PATH=$HOST_FEMC_PATH
     volumes:
       - ./config:/app/config
       - ./app/receiver.log:/app/receiver.log
