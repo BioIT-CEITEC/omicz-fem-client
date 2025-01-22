@@ -245,9 +245,12 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token):
             # Replace the placeholders that need the system template:
             if placeholder in system_var_handler:
                 task_info_data = task_info.get(placeholder.lower())
-                sys_template = system_var_handler.get(placeholder)
-                value = template_format(task_info_data, sys_template)
-                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
+                if task_info_data:  
+                    sys_template = system_var_handler.get(placeholder)
+                    value = template_format(task_info_data, sys_template)
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
+                else:
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
                 continue
 
             # Try resolving the placeholder from function arguments
