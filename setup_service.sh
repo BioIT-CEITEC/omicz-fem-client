@@ -22,10 +22,12 @@ HOST_FEMC_PATH=$(pwd)
 echo "DATA_PATH=${DATA_PATH}" > .env
 echo "SANDBOX_PATH=${SANDBOX_PATH}" >> .env
 echo "HOST_FEMC_PATH=${HOST_FEMC_PATH}" >> .env
+echo "LOG_FILE=${LOG_FILE}" >> .env
 
 # Log a message indicating setup
 echo "Resolved data_path: $DATA_PATH"
 echo "Resolved sandbox_path: $SANDBOX_PATH"
+echo "Log file path: $LOG_FILE"
 
 # Run the docker compose command, redirecting stdout and stderr to receiver.log
 docker compose up -d >> $LOG_FILE 2>&1
