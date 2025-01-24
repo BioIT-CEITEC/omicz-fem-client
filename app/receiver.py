@@ -2,10 +2,14 @@
 import pika
 import json
 import os
+from dotenv import load_dotenv
 import time
 import ssl
 import logging
 from src.commands import *  # Assuming you have commands defined in this module
+
+#read the .env file and load the variables
+load_dotenv()
 
 # Function to load configuration
 def load_configuration():
@@ -22,7 +26,7 @@ def setup_logger():
     logger = logging.getLogger("receiver")
     logger.setLevel(logging.DEBUG)
 
-    log_file = "receiver.log"
+    log_file = os.getenv("LOG_FILE")
     fh = logging.FileHandler(log_file)
     fh.setLevel(logging.DEBUG)
 
