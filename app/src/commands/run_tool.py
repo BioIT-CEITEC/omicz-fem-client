@@ -329,6 +329,8 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token):
                 args=(container_id, execution_id, task_id, logger, user_id)
             )
             logs_thread.start()
+
+            return response, container_id
             
             # Simulate waiting for files to be generated (this can be replaced with a more accurate wait/check)
             # sandbox_path = os.environ.get("SANDBOX_PATH", "/sandbox")
