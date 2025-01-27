@@ -8,6 +8,7 @@ services:
       - UID=$UID
       - GID=$GID
       - HOST_FEMC_PATH=$HOST_FEMC_PATH
+      - LOG_FILE=/app/receiver.log
     volumes:
       - ./config:/app/config
       - ./app/receiver.log:/app/receiver.log
