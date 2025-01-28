@@ -106,11 +106,11 @@ def on_request(ch, method, props, body, logger):
         #     )
         #     logger.info(f"[.] Done processing folder: {folder}, execution_id: {execution_id}, user_id: {user_id}")
 
-        if len(components) == 4:
-            execution_id, user_id, token, json_action = map(str, components)
+        if len(components) == 5:
+            task_id, execution_id, user_id, token, json_action = map(str, components)
             logger.info(f'[.] Received {json_action} command for execution_id: {execution_id}, user_id: {user_id}')
 
-            result = run_tool(api_base_url=config.api_base_url, task_id=None, execution_id=execution_id, user_id=user_id, token=token, json_action=json_action)
+            result = run_tool(api_base_url=config.api_base_url, task_id=task_id, execution_id=execution_id, user_id=user_id, token=token, json_action=json_action)
             if isinstance(result, tuple):
                 response, command_message = result
             else:
