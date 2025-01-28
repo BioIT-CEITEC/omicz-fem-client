@@ -182,12 +182,12 @@ def clean_composed_command(command):
     
     return cleaned_command
 
-def run_tool(api_base_url, task_id, execution_id, user_id, token):
+def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
     
     try:
         logger = logging.getLogger("receiver")
-        logger.info(f"Starting tool for task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}")
-        
+        logger.info(f"Starting {json_action} command for execution_id: {execution_id}, user_id: {user_id}")
+                
         # Load the JSON launcher configuration
         json_launcher_path = config.json_launcher
         logger.info(f"json_launcher: {json_launcher_path}")
@@ -197,23 +197,48 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token):
         with open(json_launcher_path, "r") as json_file:
             json_config = json.load(json_file)
 
-        #Fetch Task info from the DDBB
-        task_info = fetch_task_info(api_base_url, task_id)
-        if task_info:
+        #Fetch Task info or Execution info from DDBB:
+        if task_id:
+            task_info = fetch_task_info(api_base_url, task_id)
             pre_checks_result = pre_checks()
             #logger.info(f"task_info: {task_info}")
             #logger.info(f"Pre-checks result: {pre_checks_result}")
         
-        if task_id == "health-check":
-            return pre_checks_result
+            if task_id == "health-check":
+                return pre_checks_result
+        else: 
+            #If there's no task/tool info provided, fetch the execution info
+            headers = {'Content-Type': 'application/json',
+                "Authorization": f"Bearer {token}" }
+            response = requests.get(f"{api_base_url}/executions/{execution_id}", headers=headers)
+            execution = response.json()
+            # Extract process_info list from the execution
+            process_info_list = execution.get("result", {}).get("process_info", [])
+
+            # Find the process_info entry matching the specified node
+            task_info = next(
+                (info for info in process_info_list if info.get("node") == config.node_name),
+                None  # Default value if no match is found
+            )
+
+            if not task_info:
+                raise ValueError("Not task_info or execution_info downloaded from DDBB")
+        logger.info(f"Task info correctly fetched for {json_action}")
         
         # Extract command and arguments from the JSON
-        cmd = json_config.get("submit_run", {}).get("cmd", {})
+        cmd = json_config.get(str(json_action), {}).get("cmd", {})
         if not cmd:
             raise ValueError("Command to run is not defined in the JSON configuration")
         
         if cmd.startswith('curl -X'):
-            cmd = replace_api_placeholders(cmd, json_config) 
+            cmd = replace_api_placeholders(cmd, json_config)
+
+    except Exception as e:
+        error_message = f"An error occurred while loading the json file: {e}"
+        logger.info(error_message)
+        return error_message 
+    
+    try:
 
         # Extract mapping dictionaries from the json_config
         task_info_vars = json_config.get("task_info_vars", {})
