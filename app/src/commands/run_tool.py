@@ -198,7 +198,7 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
             json_config = json.load(json_file)
 
         #Fetch Task info or Execution info from DDBB:
-        if task_id:
+        if json_action == "submit_run":
             task_info = fetch_task_info(api_base_url, task_id)
             pre_checks_result = pre_checks()
             #logger.info(f"task_info: {task_info}")
@@ -217,7 +217,7 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
 
             # Find the process_info entry matching the specified node
             task_info = next(
-                (info for info in process_info_list if info.get("node") == config.node_name),
+                (info for info in process_info_list if info.get("node") == config.node_name and info.get("task_id") == task_id),
                 None  # Default value if no match is found
             )
 
