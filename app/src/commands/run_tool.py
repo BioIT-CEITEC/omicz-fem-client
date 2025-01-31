@@ -259,56 +259,66 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
             "token": token
         }
 
-        for placeholder in placeholders:
-            # Build the task_command with the CWL format for that specific placeholder:
-            if placeholder == "TASK_COMMAND":
-                task_command = task_info.get("command")
-                value = build_cwl_command(task_command, parametric_args=None)
-                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                continue
+        processed_placeholders = set()  # To keep track of placeholders already processed
 
-            # Replace the placeholders that need the system template:
-            if placeholder in system_var_handler:
-                task_info_data = task_info.get(placeholder.lower())
-                if task_info_data:  
-                    sys_template = system_var_handler.get(placeholder)
-                    value = template_format(task_info_data, sys_template)
-                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
-                else:
-                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
-                continue
+        while placeholders:  # Loop until no placeholders remain
+            for placeholder in placeholders:
+                if placeholder in processed_placeholders:
+                    continue  # Skip placeholders that have already been processed
+                processed_placeholders.add(placeholder)
 
-            # Then, try resolving from task_info using task_info_vars
-            task_info_path = task_info_vars.get(placeholder)
-            if task_info_path:
-                if isinstance(task_info_path, list):  # Resolve nested keys
-                    value = task_info
-                    for key in task_info_path:
-                        if value is None:  # If any level is missing, stop
-                            break
-                        value = value.get(key)
-                    if value is not None:
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                        continue
-                elif isinstance(task_info_path, str):  # Resolve top-level keys
-                    value = task_info.get(task_info_path)
-                    if value is not None:
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                        continue
+                # Build the task_command with the CWL format for that specific placeholder:
+                if placeholder == "TASK_COMMAND":
+                    task_command = task_info.get("command")
+                    value = build_cwl_command(task_command, parametric_args=None)
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                    continue
 
-            # Try resolving the placeholder from function arguments
-            if placeholder in argument_values:
-                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
-                continue
+                # Replace the placeholders that need the system template:
+                if placeholder in system_var_handler:
+                    task_info_data = task_info.get(placeholder.lower())
+                    if task_info_data:  
+                        sys_template = system_var_handler.get(placeholder)
+                        value = template_format(task_info_data, sys_template)
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
+                    else:
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
+                    continue
 
-            # Try resolving the placeholder from environment variables
-            env_value = os.environ.get(placeholder)
-            if env_value is not None:
-                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
-                continue
+                # Then, try resolving from task_info using task_info_vars
+                task_info_path = task_info_vars.get(placeholder)
+                if task_info_path:
+                    if isinstance(task_info_path, list):  # Resolve nested keys
+                        value = task_info
+                        for key in task_info_path:
+                            if value is None:  # If any level is missing, stop
+                                break
+                            value = value.get(key)
+                        if value is not None:
+                            resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                            continue
+                    elif isinstance(task_info_path, str):  # Resolve top-level keys
+                        value = task_info.get(task_info_path)
+                        if value is not None:
+                            resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                            continue
 
-            # If the placeholder cannot be resolved, raise an error
-            raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
+                # Try resolving the placeholder from function arguments
+                if placeholder in argument_values:
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
+                    continue
+
+                # Try resolving the placeholder from environment variables
+                env_value = os.environ.get(placeholder)
+                if env_value is not None:
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
+                    continue
+
+                # If the placeholder cannot be resolved, raise an error
+                raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
+            
+            # Re-fetch placeholders after processing
+            placeholders = [ph for ph in placeholder_pattern.findall(resolved_cmd) if ph not in processed_placeholders]
         
         resolved_cmd = clean_composed_command(resolved_cmd)
 
