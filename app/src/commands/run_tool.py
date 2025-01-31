@@ -274,17 +274,6 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                     resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
                     continue
 
-                # Replace the placeholders that need the system template:
-                if placeholder in system_var_handler:
-                    task_info_data = task_info.get(placeholder.lower())
-                    if task_info_data:  
-                        sys_template = system_var_handler.get(placeholder)
-                        value = template_format(task_info_data, sys_template)
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
-                    else:
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
-                    continue
-
                 # Then, try resolving from task_info using task_info_vars
                 task_info_path = task_info_vars.get(placeholder)
                 if task_info_path:
@@ -302,6 +291,17 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                         if value is not None:
                             resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
                             continue
+
+                # Replace the placeholders that need the system template:
+                if placeholder in system_var_handler:
+                    task_info_data = task_info.get(placeholder.lower())
+                    if task_info_data:  
+                        sys_template = system_var_handler.get(placeholder)
+                        value = template_format(task_info_data, sys_template)
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
+                    else:
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
+                    continue
 
                 # Try resolving the placeholder from function arguments
                 if placeholder in argument_values:
