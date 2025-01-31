@@ -278,17 +278,6 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                     resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
                 continue
 
-            # Try resolving the placeholder from function arguments
-            if placeholder in argument_values:
-                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
-                continue
-
-            # Try resolving the placeholder from environment variables
-            env_value = os.environ.get(placeholder)
-            if env_value is not None:
-                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
-                continue
-
             # Then, try resolving from task_info using task_info_vars
             task_info_path = task_info_vars.get(placeholder)
             if task_info_path:
@@ -306,6 +295,17 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                     if value is not None:
                         resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
                         continue
+
+            # Try resolving the placeholder from function arguments
+            if placeholder in argument_values:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
+                continue
+
+            # Try resolving the placeholder from environment variables
+            env_value = os.environ.get(placeholder)
+            if env_value is not None:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
+                continue
 
             # If the placeholder cannot be resolved, raise an error
             raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
