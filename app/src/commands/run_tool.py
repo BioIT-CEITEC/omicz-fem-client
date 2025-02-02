@@ -23,7 +23,7 @@ def fetch_task_info(api_base_url, task_id):
         return None
 
 
-def replace_api_placeholders(cmd, config_json):
+def replace_api_placeholders(cmd, config_json, json_action):
     """
     Replaces placeholders in the cmd string surrounded by {} with corresponding values from the config JSON.
     - Handles lists by repeating flags for each item in the list.
@@ -35,7 +35,7 @@ def replace_api_placeholders(cmd, config_json):
 
     for placeholder in placeholders:
         # Get the replacement value from the config JSON under "submit_run"
-        replacement_value = config_json.get("submit_run", {}).get(placeholder)
+        replacement_value = config_json.get(str(json_action), {}).get(placeholder)
 
         if replacement_value is None:
             # Log missing placeholder for debugging
@@ -231,7 +231,7 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
             raise ValueError("Command to run is not defined in the JSON configuration")
         
         if cmd.startswith('curl -X'):
-            cmd = replace_api_placeholders(cmd, json_config)
+            cmd = replace_api_placeholders(cmd, json_config, json_action)
 
     except Exception as e:
         error_message = f"An error occurred while loading the json file: {e}"
@@ -247,8 +247,6 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
         # Find all placeholders in the command string
         placeholder_pattern = re.compile(r"%%(.*?)%%")
         resolved_cmd = cmd
-        
-        placeholders = placeholder_pattern.findall(cmd)
 
         # Function arguments to check for placeholders
         argument_values = {
@@ -261,10 +259,15 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
 
         processed_placeholders = set()  # To keep track of placeholders already processed
 
-        while placeholders:  # Loop until no placeholders remain
+        while True:
+            # Find all placeholders in the current command
+            placeholders = placeholder_pattern.findall(resolved_cmd)
+            placeholders = [ph for ph in placeholders if ph not in processed_placeholders]
+
+            if not placeholders:  # Break if no new placeholders remain
+                break
+
             for placeholder in placeholders:
-                if placeholder in processed_placeholders:
-                    continue  # Skip placeholders that have already been processed
                 processed_placeholders.add(placeholder)
 
                 # Build the task_command with the CWL format for that specific placeholder:
@@ -283,14 +286,15 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                             if value is None:  # If any level is missing, stop
                                 break
                             value = value.get(key)
-                        if value is not None:
-                            resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                            continue
+
                     elif isinstance(task_info_path, str):  # Resolve top-level keys
                         value = task_info.get(task_info_path)
-                        if value is not None:
-                            resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                            continue
+
+                    if value is not None:
+                        # Replace the placeholder with the resolved value
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                        # Check if the resolved value introduces new placeholders
+                        continue
 
                 # Replace the placeholders that need the system template:
                 if placeholder in system_var_handler:
@@ -316,9 +320,6 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
 
                 # If the placeholder cannot be resolved, raise an error
                 raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
-            
-            # Re-fetch placeholders after processing
-            placeholders = [ph for ph in placeholder_pattern.findall(resolved_cmd) if ph not in processed_placeholders]
         
         resolved_cmd = clean_composed_command(resolved_cmd)
 
