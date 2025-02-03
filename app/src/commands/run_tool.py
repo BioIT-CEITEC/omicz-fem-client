@@ -274,7 +274,14 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                 if placeholder == "TASK_COMMAND":
                     task_command = task_info.get("command")
                     value = build_cwl_command(task_command, parametric_args=None)
-                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                    if cmd.startswith('curl -X'):
+                        # Convert the command into a list format as a string
+                        value_as_list_str = "[" + ", ".join(f'"{part}"' for part in value.split()) + "]"
+                        
+                        # Replace the placeholder with the formatted list string
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", value_as_list_str)
+                    else:
+                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
                     continue
 
                 # Then, try resolving from task_info using task_info_vars
