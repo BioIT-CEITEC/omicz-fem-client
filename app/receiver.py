@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 import time
 import ssl
 import logging
-from src.commands import *  # Assuming you have commands defined in this module
+from src.commands.check_resources import *
+from src.commands.run_tool import *
+from src.commands.data_operations import *
+from src.commands.utils import *
 
 #read the .env file and load the variables
 load_dotenv()
