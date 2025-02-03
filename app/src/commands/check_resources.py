@@ -7,7 +7,7 @@ from pathlib import Path
 from config import config
 
 # Set up logging configuration
-logging.basicConfig(filename='receiver.log', level=logging.INFO)
+#logging.basicConfig(filename='receiver.log', level=logging.INFO)
 
 def check_installations():
     try:
