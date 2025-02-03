@@ -279,7 +279,7 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                         value_as_list_str = "[" + ", ".join(f'"{part}"' for part in value.split()) + "]"
                         
                         # Replace the placeholder with the formatted list string
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", value_as_list_str)
+                        resolved_cmd = resolved_cmd.replace(f'"%%{placeholder}%%"', value_as_list_str)
                     else:
                         resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
                     continue
