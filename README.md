@@ -33,7 +33,7 @@ The minimal client connectivity requirements to be part of an FEM-enabled federa
    - Default port: 5671 (AMQPS 1.0 over TLS)
    - Destination: FEM server IP or FQDN 
 
-> Please, consider that tools, pipelines or FL frameworks triggered by FEM (e.g. Flower, etc) have their on connectivity requirements.
+> Please, consider that tools, pipelines or FL frameworks triggered by FEM (e.g. Flower, etc) have their own connectivity requirements.
 
 ## Getting Started
 
