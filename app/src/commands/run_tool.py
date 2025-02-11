@@ -182,7 +182,7 @@ def clean_composed_command(command):
     
     return cleaned_command
 
-def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
+def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, token, json_action):
     
     try:
         logger = logging.getLogger("receiver")
@@ -273,7 +273,7 @@ def run_tool(api_base_url, task_id, execution_id, user_id, token, json_action):
                 # Build the task_command with the CWL format for that specific placeholder:
                 if placeholder == "TASK_COMMAND":
                     task_command = task_info.get("command")
-                    value = build_cwl_command(task_command, parametric_args=None)
+                    value = build_cwl_command(task_command, parametric_args=parametric_args)
                     if cmd.startswith('curl -X'):
                         # Convert the command into a list format as a string
                         value_as_list_str = "[" + ", ".join(f'"{part}"' for part in value.split()) + "]"
