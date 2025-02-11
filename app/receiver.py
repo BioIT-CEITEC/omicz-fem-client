@@ -59,7 +59,7 @@ def on_request(ch, method, props, body, logger):
     try:
         # Extracting tool_id, task_id, execution_id, and user_id from the body
         body_str = body.decode('utf-8')
-        components = body_str.split(':')
+        components = body_str.split('|')
         logger.info(f'[.] Received command {components}')
         response_message = {} 
         
@@ -113,7 +113,13 @@ def on_request(ch, method, props, body, logger):
             task_id, execution_id, user_id, token, json_action = map(str, components)
             logger.info(f'[.] Received {json_action} command for execution_id: {execution_id}, user_id: {user_id}')
 
-            result = run_tool(api_base_url=config.api_base_url, task_id=task_id, execution_id=execution_id, user_id=user_id, token=token, json_action=json_action)
+            result = run_tool(api_base_url=config.api_base_url, 
+                              task_id=task_id, 
+                              execution_id=execution_id, 
+                              parametric_args=None,
+                              user_id=user_id, 
+                              token=token, 
+                              json_action=json_action)
             if isinstance(result, tuple):
                 response, command_message = result
             else:
@@ -125,6 +131,8 @@ def on_request(ch, method, props, body, logger):
  
         elif len(components) == 7 and components[0] != "None":
             tool_id, task_id, execution_id, parametric_args, user_id, token, json_action = map(str, components)
+            #Convert the parametric_args variable into a dictionary
+            parametric_args = eval(parametric_args)
             logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}')
 
             result = run_tool(api_base_url=config.api_base_url, 
