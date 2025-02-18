@@ -243,6 +243,7 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, toke
         # Extract mapping dictionaries from the json_config
         task_info_vars = json_config.get("task_info_vars", {})
         system_var_handler = json_config.get("system_var_handler", {})
+        site_vars = json_config.get("site_vars", {})
 
         # Find all placeholders in the command string
         placeholder_pattern = re.compile(r"%%(.*?)%%")
@@ -282,6 +283,11 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, toke
                         resolved_cmd = resolved_cmd.replace(f'"%%{placeholder}%%"', value_as_list_str)
                     else:
                         resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                    continue
+
+                # Try resolving the placeholder from function arguments
+                if placeholder in site_vars:
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", site_vars.get(placeholder))
                     continue
 
                 # Then, try resolving from task_info using task_info_vars
