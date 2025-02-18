@@ -157,7 +157,7 @@ Once the container image has been built and pushed to the project’s **containe
 
 | Resource | Description |
 | -------- | ----------- |
-| [FEM-tool-schema.json]() | JSON schema defining tool registration requirements |
+| [FEM-tool-schema.json](https://gitlab.bsc.es/fl/fem-orchestrator/-/blob/4cea868db67d9a96d1762c0f2c7090d635734513/docs/schemas/tools.json) | JSON schema defining tool registration requirements |
 
 
 
