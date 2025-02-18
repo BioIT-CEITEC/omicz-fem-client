@@ -145,7 +145,7 @@ docker run --rm \
 ```
 Where:
 
-- `$DATA_PATH`: corresponds to the absolute path of o the datasets that the federated data node is allowing access to (e.g., images, clinical records, etc.). The container's mointing point (`/data` in the example above) can be freely setup to an static container path  according to tool's requirements. Yet, it should be latter on propery configured in the FEM-client database (see step 2). https://gitlab.bsc.es/fl/dt4h-fem-client-config#set-up-configuration-file
+- `$DATA_PATH`: corresponds to the absolute path of o the datasets that the federated data node is allowing access to (e.g., images, clinical records, etc.). The container's mointing point (`/data` in the example above) can be freely setup to an static container path  according to tool's requirements. Yet, it should be latter on propery configured in the FEM-client database (see step 2). 
 - `$SANDBOX_PATH`: corresponds to the absolute path of the folder where the results of that particular user execution run are expected to be created. The container's mointing point (`/sandbox` in the example above) can be freely setup to an static container path  according to tool's requirements. Yet, it should be latter on propery configured in the FEM-client database (see step 2).
 - $UID and $GID: correspond to the (unprivileged) user id and the group id running the Tool container.
 
