@@ -38,18 +38,36 @@ The minimal client connectivity requirements to be part of an FEM-enabled federa
 ## Getting Started
 
 1. Clone the repository:
+
 `git clone https://gitlab.bsc.es/fl/fem-client.git`
 
 2. Navigate to the project directory:
+
 `cd fem-client`
 
-3. Setup config file (clone the config repository that was shared with you and follow the instructions writen on its README file):
+3. Prepare the configuration files:
+
+Associated to each project/federation (and usually under restricted access), there exist a repository with the FEM-client config files already pre-configured to connect to the project/federation orchestrator node. Ask for instructions and access to your federation/project manager.
+
+Within `fem-client/` folder, clone the given repository and follow its instructions:
+ 
 ```
 git clone https://gitlab.bsc.es/fl/{project_name}-fem-client-config.git
 ```
-Once the config folder is set-up:
+The resulting structure after folowing the instructions should looks like:
+```
+fem-client/
+├── config/
+│   └── config.py
+└── app/
+│   └── [...]
+├── Dockerfile
+
+```
+
 
 4. Start the Client
+Once the config folder is set-up:
 ```
 bash setup_service.sh
 ```
@@ -105,8 +123,8 @@ FEM-client supports multiple container execution backends through launchers. Ens
 
 ##### Data Handling
 The FEM-client will trigger the Tool container with the following data volumes, although additional volumens can be specified in the database (see step 2):
-- Data Volume (`data_path`): Mounted as read-only (ro). This contains input files provided by the federated node.
-- User Sandbox Volume (`sandbox_path`): Mounted as read-write (rw). This is the working directory where the tool can write temporary and output files.
+- **Data Volume** (within `$DATA_PATH` host path): Mounted as read-only (ro). This contains input files provided by the federated node.
+- **User Sandbox Volume** (within `$SANDBOX_PATH` host path): Mounted as read-write (rw). This is the working directory where the tool can write temporary and output files of a execution run.
 Any command-line arguments referring to files or directories should consider that paths must be inside these volumes.
 
 ##### Output & Logging
@@ -135,19 +153,23 @@ docker run --rm \
   --user $UID:$GID \ # Run under the same UID:GID as FEM-client
   -v $DATA_PATH:/data:ro \
   -v $SANDBOX_PATH:/sandbox:rw \
+  -e NODE_NAME:$node_name   \
   my-tool-image \
     --input /data/input-file.csv \
-    --output /sandbox/prediction.json
+    --output /sandbox/local_weights.json
     --my_threshold 33 
+    --logfile /sanbox/myTool.log
+    --errfile /sandbox/myErr.log
 
 
 
 ```
 Where:
 
-- `$DATA_PATH`: corresponds to the absolute path of o the datasets that the federated data node is allowing access to (e.g., images, clinical records, etc.). The container's mointing point (`/data` in the example above) can be freely setup to an static container path  according to tool's requirements. Yet, it should be latter on propery configured in the FEM-client database (see step 2). 
+- `$DATA_PATH`: root-path directory of the datasets that the federated data node is allowing access to (e.g., images, clinical records, etc.). Value taken from the FEM-client node configuration file.  the  The container's mounting point (`/data` in the example above) can be freely setup any static container path  according to tool's requirements. Yet, it should be latter on propery configured in the FEM-client database (see step 2). 
 - `$SANDBOX_PATH`: corresponds to the absolute path of the folder where the results of that particular user execution run are expected to be created. The container's mointing point (`/sandbox` in the example above) can be freely setup to an static container path  according to tool's requirements. Yet, it should be latter on propery configured in the FEM-client database (see step 2).
-- $UID and $GID: correspond to the (unprivileged) user id and the group id running the Tool container.
+- `$UID` and `$GID`: correspond to the (unprivileged) user id and the group id running the Tool container.
+- `$node_name`:
 
 ### 2. FEM-orchestrator Tool registration
 
