@@ -183,6 +183,24 @@ def clean_composed_command(command):
     return cleaned_command
 
 def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, token, json_action):
+
+    try: 
+        # Define directories
+        user_folder = os.path.join(config.sandbox_path, user_id)
+        execution_folder = os.path.join(user_folder, execution_id)
+
+        # Check and create directories if they don't exist
+        if not os.path.exists(user_folder):
+            os.makedirs(user_folder)
+
+        if not os.path.exists(execution_folder):
+            os.makedirs(execution_folder)
+            
+    except Exception as e:
+        error_message = f"Execution folder {execution_folder} could not be created: {e}"
+        logger.info(error_message)
+        return error_message 
+       
     
     try:
         logger = logging.getLogger("receiver")
