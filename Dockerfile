@@ -7,6 +7,7 @@ RUN apt-get update && \
     bash \
     curl \
     git \
+    jq \
     ca-certificates \
     gnupg \
     lsb-release \
