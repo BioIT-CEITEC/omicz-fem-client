@@ -388,22 +388,7 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, toke
             response = process.stdout.decode().strip()
             logger.info(f"Command executed successfully: {response}")
             
-            # Simulate capturing container ID (Docker outputs the container ID on success)
-            container_id = response.strip()  # The container ID should be the first line of stdout
-            
-            # Log container ID and proceed with file generation simulation
-            logger.info(f"Container ID: {container_id}")
-            
-            # Simulate capturing logs (you can adapt this to your own log capture function if needed)
-            logger.info(f"Starting log capture for container: {container_id}")
-            # Assuming `capture_docker_logs` function exists to capture logs from the container
-            logs_thread = threading.Thread(
-                target=capture_docker_logs, 
-                args=(container_id, execution_id, task_id, logger, user_id)
-            )
-            logs_thread.start()
-
-            return response, container_id
+            return response
             
             # Simulate waiting for files to be generated (this can be replaced with a more accurate wait/check)
             # sandbox_path = os.environ.get("SANDBOX_PATH", "/sandbox")

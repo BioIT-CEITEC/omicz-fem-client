@@ -120,14 +120,9 @@ def on_request(ch, method, props, body, logger):
                               user_id=user_id, 
                               token=token, 
                               json_action=json_action)
-            if isinstance(result, tuple):
-                response, command_message = result
-            else:
-                response = result
-                command_message = None
-
-            response_message = {"response": response, "command_message": command_message}
-            logger.info(f"{json_action} RESPONSE: {response}, {command_message}")
+            
+            response_message = {"response": result}
+            logger.info(f"{json_action} RESPONSE: {result}")
  
         elif len(components) == 7 and components[0] != "None":
             tool_id, task_id, execution_id, parametric_args, user_id, token, json_action = map(str, components)
@@ -142,14 +137,9 @@ def on_request(ch, method, props, body, logger):
                               user_id=user_id, 
                               token=token, 
                               json_action=json_action)
-            if isinstance(result, tuple):
-                response, command_message = result
-            else:
-                response = result
-                command_message = None
-
-            response_message = {"response": response, "command_message": command_message}
-            logger.info(f"RESPONSE: {response}, {command_message}")
+            
+            response_message = {"response": result}
+            logger.info(f"RESPONSE: {result}")
 
         else:
             logger.error(f"Invalid body format. Expected 3 or 4 components separated by colons, but received: {body_str}")
