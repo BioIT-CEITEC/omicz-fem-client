@@ -121,8 +121,8 @@ def on_request(ch, method, props, body, logger):
                               token=token, 
                               json_action=json_action)
             
-            response_message = {"response": result}
-            logger.info(f"{json_action} RESPONSE: {result}")
+            response_message = json.loads(result)
+            logger.info(f"{json_action} RESPONSE: {response_message}")
  
         elif len(components) == 7 and components[0] != "None":
             tool_id, task_id, execution_id, parametric_args, user_id, token, json_action = map(str, components)
@@ -138,8 +138,8 @@ def on_request(ch, method, props, body, logger):
                               token=token, 
                               json_action=json_action)
             
-            response_message = {"response": result}
-            logger.info(f"RESPONSE: {result}")
+            response_message = json.loads(result)
+            logger.info(f"RESPONSE: {response_message}")
 
         else:
             logger.error(f"Invalid body format. Expected 3 or 4 components separated by colons, but received: {body_str}")
