@@ -235,7 +235,7 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, toke
 
             # Find the process_info entry matching the specified node
             task_info = next(
-                (info for info in process_info_list if info.get("node") == config.node_name and info.get("task_id") == task_id),
+                (info for info in process_info_list if info.get("node") == config.node_name and info.get("task_id") == task_id and info.get("action") == "submit_run"),
                 None  # Default value if no match is found
             )
 
