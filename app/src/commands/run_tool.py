@@ -248,6 +248,12 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, toke
         if not cmd:
             raise ValueError("Command to run is not defined in the JSON configuration")
         
+        # Ensure cmd is always a string
+        if isinstance(cmd, list):
+            cmd = "\n".join(cmd)
+        else:
+            cmd = cmd
+        
         if cmd.startswith('curl -X'):
             cmd = replace_api_placeholders(cmd, json_config, json_action)
 
