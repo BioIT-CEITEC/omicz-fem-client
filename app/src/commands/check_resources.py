@@ -4,63 +4,65 @@ import psutil
 import socket
 import logging
 from pathlib import Path
-from config import config
+import json
 
 # Set up logging configuration
 #logging.basicConfig(filename='receiver.log', level=logging.INFO)
 
 def check_installations():
     try:
-        command = "docker --version; curl ipinfo.io"
+        command = "docker --version; curl -s ipinfo.io"
         logging.info(f'EXECUTING COMMAND: {command}')
-        check = subprocess.run(command, shell=True, capture_output=True)
-        response = check.stdout.decode()
-        #logging.info(response)
-        return response
+        check = subprocess.run(command, shell=True, capture_output=True, text=True)
+        response = check.stdout.strip()
+
+        # Try parsing the second command output as JSON
+        parts = response.split("\n", 1)
+        docker_version = parts[0] if parts else "Unknown"
+        ip_info = {}
+        
+        if len(parts) > 1:
+            try:
+                ip_info = json.loads(parts[1])  # Attempt to parse IP info as JSON
+            except json.JSONDecodeError:
+                ip_info = {"error": "Failed to parse IP info"}
+
+        return {
+            "docker_version": docker_version,
+            "ip_info": ip_info
+        }
+    
     except Exception as e:
-        logging.error(f"Error calling Docker. If the user running the bash script is not part of the docker group, please add it with the following commands: 1) `sudo groupadd docker`, 2)`sudo usermod -aG docker $USER`, 3)`newgrp docker`.\nTraceback: {e}")
-        return str(e)
+        logging.error(f"Error calling Docker. Traceback: {e}")
+        return {"error": str(e)}
 
 def check_gpu():
     try:
-        check = subprocess.check_output('nvidia-smi')
-        response = 'Nvidia GPU detected'
+        subprocess.check_output('nvidia-smi', stderr=subprocess.STDOUT, shell=True)
         logging.info('Nvidia GPU detected')
-        return response
-    except Exception as e:
-        logging.warning(f'No Nvidia GPU in the system.\nTraceback: {e}')
-        response = 'No Nvidia GPU in the system'
-        return response
+        return {"gpu_detected": True, "message": "Nvidia GPU detected"}
+    except subprocess.CalledProcessError as e:
+        logging.warning(f'No Nvidia GPU in the system. Traceback: {e}')
+        return {"gpu_detected": False, "message": "No Nvidia GPU in the system"}
 
 def check_paths():
     sandbox_path = Path("/app/sandbox")
     data_path = Path("/app/data")
-    response = ""
 
-    if not data_path.exists():
-        logging.error(f"Data path does not exist or is not set: {data_path}")
-        response += f"Data path does not exist or is not set: {data_path}\n"
-    # else:
-    #     # List the contents of the data path
-    #     data_contents = subprocess.run(['ls', '-l', str(data_path)], capture_output=True, text=True)
-    #     logging.info(f"Data path contents:\n{data_contents.stdout}")
-    #     response += f"Data path contents:\n{data_contents.stdout}\n"
+    paths_status = {
+        "sandbox_path_exists": sandbox_path.exists(),
+        "data_path_exists": data_path.exists(),
+        "sandbox_contents": [],
+        "data_path_contents": []
+    }
 
-    if not sandbox_path.exists():
-        logging.error(f"Sandbox path does not exist or is not set: {sandbox_path}")
-        response += f"Sandbox path does not exist or is not set: {sandbox_path}\n"
+    if sandbox_path.exists():
+        paths_status["sandbox_contents"] = os.listdir(sandbox_path)
 
-    else:
-        sandbox_contents = os.listdir(sandbox_path)
-        logging.info(f"Sandbox path contents:\n{sandbox_contents}")
-        response += f"Sandbox path contents:\n{sandbox_contents}\n"
+    if data_path.exists():
+        paths_status["data_path_contents"] = os.listdir(data_path)
 
-    if response == "":
-        logging.info("Paths are valid")
-        response = "Paths are valid"
-
-    return response
-
+    return paths_status
 
 def check_resources(check):
     cpu_count = psutil.cpu_count()
@@ -76,7 +78,6 @@ def check_resources(check):
         gpu_count = 0
 
     try:
-        # connecting to a website that always exists
         host = socket.gethostbyname("www.google.com")
         socket.create_connection((host, 80), 2)
         has_internet = True
@@ -84,58 +85,48 @@ def check_resources(check):
         has_internet = False
 
     resources = {
-        'CPU Count': cpu_count,
-        'CPU Percent': cpu_percent,
-        'Memory Available': f"{memory_available / (1024 ** 3):.2f} GB",
-        'Memory Total': f"{memory_total / (1024 ** 3):.2f} GB",
-        'GPU Count': gpu_count,
-        'Has Internet': has_internet,
+        "CPU Count": cpu_count,
+        "CPU Percent": cpu_percent,
+        "Memory Available": f"{memory_available / (1024 ** 3):.2f} GB",
+        "Memory Total": f"{memory_total / (1024 ** 3):.2f} GB",
+        "GPU Count": gpu_count,
+        "Has Internet": has_internet,
     }
 
-    if check == 'all':
+    if check == "all":
         return resources
 
-    result = {}
-    if check == 'cpu':
-        result['CPU Count'] = cpu_count
-        result['CPU Percent'] = cpu_percent
-    elif check == 'memory':
-        result['Memory Available'] = f"{memory_available / (1024 ** 3):.2f} GB"
-        result['Memory Total'] = f"{memory_total / (1024 ** 3):.2f} GB"
-    elif check == 'gpu':
-        result['GPU Count'] = gpu_count
-    elif check == 'internet':
-        result['Has Internet'] = has_internet
+    filtered_resources = {}
+    if check == "cpu":
+        filtered_resources["cpu_count"] = cpu_count
+        filtered_resources["cpu_percent"] = cpu_percent
+    elif check == "memory":
+        filtered_resources["memory_available_gb"] = round(memory_available / (1024 ** 3), 2)
+        filtered_resources["memory_total_gb"] = round(memory_total / (1024 ** 3), 2)
+    elif check == "gpu":
+        filtered_resources["gpu_count"] = gpu_count
+    elif check == "internet":
+        filtered_resources["has_internet"] = has_internet
     else:
         raise ValueError(f"Invalid argument {check}, use all, cpu, memory, gpu, or internet")
 
-    return result
+    return filtered_resources
 
 
 def pre_checks():
     logging.info("Running all pre-checks...")
 
-    installations_result = check_installations()
-    gpu_result = check_gpu()
-    paths_result = check_paths()
-    resources_result = check_resources('all')
-
-    # Create a formatted string with clear section headers and consistent indentation
-    result_summary = (
-        "Installation Check:\n"
-        f"{installations_result}\n\n"
-        "GPU Check:\n"
-        f"{gpu_result}\n\n"
-        "Paths Check:\n"
-        f"{paths_result}\n\n"
-        "Resources Check:\n"
-        f"{resources_result}\n"
-    )
+    results = {
+        "installation_check": check_installations(),
+        "gpu_check": check_gpu(),
+        "paths_check": check_paths(),
+        "resources_check": check_resources("all")
+    }
 
     # Log the summary for reference
     #logging.info("RESPONSE:\n%s", result_summary)
 
-    return result_summary
+    return json.dumps(results)
 
 
 
