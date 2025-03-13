@@ -112,6 +112,28 @@ def check_resources(check):
 
     return filtered_resources
 
+def check_docker_images():
+    try:
+        command = "docker images --digests --format '{{json .}}'"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        lines = result.stdout.strip().split("\n")
+
+        images = []
+        for line in lines:
+            if line.strip():
+                image_info = json.loads(line)
+                images.append({
+                    "repository": image_info.get("Repository", "<none>"),
+                    "tag": image_info.get("Tag", "<none>"),
+                    "image_id": image_info.get("ID", "Unknown"),
+                    "sha256_digest": image_info.get("Digest", "Unknown")
+                })
+
+        return {"docker_images": images}
+    
+    except Exception as e:
+        return {"error": str(e)}
+
 
 def pre_checks():
     logging.info("Running all pre-checks...")
@@ -120,7 +142,8 @@ def pre_checks():
         "installation_check": check_installations(),
         "gpu_check": check_gpu(),
         "paths_check": check_paths(),
-        "resources_check": check_resources("all")
+        "resources_check": check_resources("all"),
+        "docker_images_installed": check_docker_images()
     }
 
     # Log the summary for reference
@@ -128,28 +151,6 @@ def pre_checks():
 
     return json.dumps(results)
 
-
-
-if __name__ == '__main__':
-    # Get arguments from the command line using argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--function", help="function to execute (pre_checks, check_installations, check_gpu, check_paths, check_resources)", type=str, default='check_resources')
-    parser.add_argument("--argument", help="check type (cpu, memory, gpu, internet)", type=str, default='all')
-
-    args = parser.parse_args()
-
-    if args.function == 'pre_checks':
-        pre_checks()
-    elif args.function == 'check_installations':
-        check_installations()
-    elif args.function == 'check_gpu':
-        check_gpu()
-    elif args.function == 'check_paths':
-        check_paths()
-    elif args.function == 'check_resources':
-        check_resources(args.argument)
-    else:
-        logging.error("Invalid function specified.")
 
 
 
