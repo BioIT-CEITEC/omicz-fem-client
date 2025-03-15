@@ -5,6 +5,7 @@ import socket
 import logging
 from pathlib import Path
 import json
+import datetime
 
 # Set up logging configuration
 #logging.basicConfig(filename='receiver.log', level=logging.INFO)
@@ -133,6 +134,36 @@ def check_docker_images():
     
     except Exception as e:
         return {"error": str(e)}
+    
+def check_pem_expiry(rabbitmq_folder):
+    pem_files = [f for f in os.listdir(rabbitmq_folder) if f.endswith(".pem")]
+    cert_expirations = {}
+
+    for pem_file in pem_files:
+        pem_path = os.path.join(rabbitmq_folder, pem_file)
+        try:
+            # Run OpenSSL command to get expiration date
+            command = f"openssl x509 -enddate -noout -in {pem_path}"
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+            output = result.stdout.strip()
+
+            if "notAfter=" in output:
+                expiry_date_str = output.split("=")[1]
+                expiry_date = datetime.datetime.strptime(expiry_date_str, "%b %d %H:%M:%S %Y %Z")
+                
+                # Check if expired
+                is_expired = expiry_date < datetime.datetime.utcnow()
+                cert_expirations[pem_file] = {
+                    "expiry_date": expiry_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "status": "Expired" if is_expired else "Valid"
+                }
+            else:
+                cert_expirations[pem_file] = {"error": "Unable to retrieve expiration date"}
+        
+        except Exception as e:
+            cert_expirations[pem_file] = {"error": str(e)}
+
+    return cert_expirations
 
 
 def pre_checks():
@@ -143,7 +174,8 @@ def pre_checks():
         "gpu_check": check_gpu(),
         "paths_check": check_paths(),
         "resources_check": check_resources("all"),
-        "docker_images_installed": check_docker_images()
+        "docker_images_installed": check_docker_images(),
+        "pem_certificates": check_pem_expiry('/app/config/rabbitmq-certificates') 
     }
 
     # Log the summary for reference
