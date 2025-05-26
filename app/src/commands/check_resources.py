@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 import datetime
 import GPUtil
+import requests
 
 # Set up logging configuration
 #logging.basicConfig(filename='receiver.log', level=logging.INFO)
@@ -80,10 +81,10 @@ def check_resources(check):
         gpu_count = 0
 
     try:
-        host = socket.gethostbyname("www.google.com")
-        socket.create_connection((host, 80), 2)
-        has_internet = True
-    except:
+        response = requests.get("https://fl.bsc.es/dt4h-fem/API/v1/docs", timeout=2)
+        has_internet = response.status_code == 200
+    except Exception as e:
+        logging.warning(f'Internet check via API failed: {e}')
         has_internet = False
 
     resources = {
