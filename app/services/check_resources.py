@@ -128,29 +128,40 @@ def check_pem_expiry(rabbitmq_folder):
 
     for pem_file in pem_files:
         pem_path = os.path.join(rabbitmq_folder, pem_file)
+
         try:
+            # Identify if file is a certificate
+            with open(pem_path, "r") as f:
+                content = f.read()
+                if "BEGIN CERTIFICATE" not in content:
+                    # Skip if not a certificate
+                    continue
+
             # Run OpenSSL command to get expiration date
-            command = f"openssl x509 -enddate -noout -in {pem_path}"
+            command = f"openssl x509 -enddate -noout -in \"{pem_path}\""
             result = subprocess.run(command, shell=True, capture_output=True, text=True)
             output = result.stdout.strip()
 
             if "notAfter=" in output:
                 expiry_date_str = output.split("=")[1]
-                expiry_date = datetime.datetime.strptime(expiry_date_str, "%b %d %H:%M:%S %Y %Z")
+                try:
+                    expiry_date = datetime.datetime.strptime(expiry_date_str, "%b %d %H:%M:%S %Y %Z")
+                except ValueError:
+                    # Handle if timezone is not included
+                    expiry_date = datetime.datetime.strptime(expiry_date_str, "%b %d %H:%M:%S %Y")
                 
-                # Check if expired
                 is_expired = expiry_date < datetime.datetime.utcnow()
                 cert_expirations[pem_file] = {
                     "expiry_date": expiry_date.strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "status": "Expired" if is_expired else "Valid"
                 }
-            else:
-                cert_expirations[pem_file] = {"error": "Unable to retrieve expiration date"}
-        
+
         except Exception as e:
+            # Only show error if the file is a cert and fails to parse
             cert_expirations[pem_file] = {"error": str(e)}
 
     return cert_expirations
+
 
 
 def pre_checks(public_ip=None):
