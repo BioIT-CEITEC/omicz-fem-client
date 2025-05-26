@@ -182,7 +182,7 @@ def clean_composed_command(command):
     
     return cleaned_command
 
-def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, token, json_action):
+def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, public_ip, token, json_action):
 
     try: 
         # Define directories
@@ -218,7 +218,7 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, toke
         #Fetch Task info or Execution info from DDBB:
         if json_action == "submit_run":
             task_info = fetch_task_info(api_base_url, task_id)
-            pre_checks_result = pre_checks()
+            pre_checks_result = pre_checks(public_ip)
             #logger.info(f"task_info: {task_info}")
             #logger.info(f"Pre-checks result: {pre_checks_result}")
         
