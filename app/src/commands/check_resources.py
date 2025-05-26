@@ -1,7 +1,6 @@
 import subprocess
 import os
 import psutil
-import socket
 import logging
 from pathlib import Path
 import json
@@ -12,31 +11,17 @@ import requests
 # Set up logging configuration
 #logging.basicConfig(filename='receiver.log', level=logging.INFO)
 
-def check_installations():
+def docker_version():
     try:
-        command = "docker --version; curl -s ipinfo.io"
-        logging.info(f'EXECUTING COMMAND: {command}')
+        # Check Docker version
+        command = "docker --version"
         check = subprocess.run(command, shell=True, capture_output=True, text=True)
-        response = check.stdout.strip()
+        docker_version = check.stdout.strip() or "Unknown"
 
-        # Try parsing the second command output as JSON
-        parts = response.split("\n", 1)
-        docker_version = parts[0] if parts else "Unknown"
-        ip_info = {}
-        
-        if len(parts) > 1:
-            try:
-                ip_info = json.loads(parts[1])  # Attempt to parse IP info as JSON
-            except json.JSONDecodeError:
-                ip_info = {"error": "Failed to parse IP info"}
+        return docker_version
 
-        return {
-            "docker_version": docker_version,
-            "ip_info": ip_info
-        }
-    
     except Exception as e:
-        logging.error(f"Error calling Docker. Traceback: {e}")
+        logging.error(f"Error checking installations. Traceback: {e}")
         return {"error": str(e)}
 
 def check_gpu():
@@ -168,11 +153,12 @@ def check_pem_expiry(rabbitmq_folder):
     return cert_expirations
 
 
-def pre_checks():
+def pre_checks(public_ip=None):
     logging.info("Running all pre-checks...")
 
     results = {
-        "installation_check": check_installations(),
+        "docker_version": docker_version(),
+        "public_ip": public_ip,
         "gpu_check": check_gpu(),
         "paths_check": check_paths(),
         "resources_check": check_resources("all"),
