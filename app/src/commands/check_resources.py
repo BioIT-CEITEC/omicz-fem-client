@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 import json
 import datetime
+import GPUtil
 
 # Set up logging configuration
 #logging.basicConfig(filename='receiver.log', level=logging.INFO)
@@ -42,9 +43,9 @@ def check_gpu():
         subprocess.check_output('nvidia-smi', stderr=subprocess.STDOUT, shell=True)
         logging.info('Nvidia GPU detected')
         return {"gpu_detected": True, "message": "Nvidia GPU detected"}
-    except subprocess.CalledProcessError as e:
-        logging.warning(f'No Nvidia GPU in the system. Traceback: {e}')
-        return {"gpu_detected": False, "message": "No Nvidia GPU in the system"}
+    except Exception as e:
+        logging.warning(f'No Nvidia GPU in the system or nvidia-smi failed. Error: {e}')
+        return {"gpu_detected": False, "message": "No Nvidia GPU or driver error"}
 
 def check_paths():
     sandbox_path = Path("/app/sandbox")
@@ -73,9 +74,9 @@ def check_resources(check):
     memory_total = virtual_memory.total
 
     try:
-        import GPUtil
         gpu_count = len(GPUtil.getGPUs())
-    except ImportError:
+    except Exception as e:
+        logging.warning(f'GPUtil failed to get GPUs: {e}')
         gpu_count = 0
 
     try:
