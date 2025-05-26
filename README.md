@@ -19,21 +19,24 @@ The key functions of the FEM client include:
 - **Task execution**: it executes tasks in the local infraestructure delegating the resources managment the customizable executors or launchers. Default executor: "docker".
 - **Task stage-out**: it exchanging the necessary task outfiles and logging files with the central orchestrator.
 
-## Prerequisites
-
-For deploying either an FEM server or client, the minimal technical requirements are:
-- Unix-based S.O. 
-- Docker and Docker Compose
-- 2CPUs and 4GB
+## Minimal Infrastructure Requirements
+- To run the FEM-client, the deploying node must provide a basic computational environment capable of executing federated tasks locally:
+  - Minimal technical requirements:
+    - Unix-based S.O. 
+    - Docker and Docker Compose
+    - 2CPUs and 4GB
+  - Minimal client connectivity requirements:
+    - Outgoing connection to RabbitMQ server
+    - Default port: 5671 (AMQPS 1.0 over TLS)
+    - Destination: FEM server IP or FQDN 
+- FEM-client includes a TES-like (Task Execution Service) interface that communicates via RabbitMQ.
+- The node is expected to:
+    - Use its local computing resources (e.g., cluster, server, HPC node, etc.).
+    - Map standard TES actions (e.g., submit job, check status, list jobs, delete job) to its local infrastructure.
+    - This mapping is done via the localconfig file in the FEM-client, which links TES actions to either: local APIs, or Command-line tools/scripts already in use at the site.
+This flexible architecture ensures the FEM-client can be integrated with a wide variety of systems while maintaining data locality and autonomy.
 
 > Please, consider that tools, pipelines or FL frameworks triggered by FEM have their on connectivity requirements.
-
-The minimal client connectivity requirements to be part of an FEM-enabled federation are:
-- Outgoing connection to RabbitMQ server
-   - Default port: 5671 (AMQPS 1.0 over TLS)
-   - Destination: FEM server IP or FQDN 
-
-> Please, consider that tools, pipelines or FL frameworks triggered by FEM (e.g. Flower, etc) have their own connectivity requirements.
 
 ## Getting Started
 
