@@ -118,14 +118,15 @@ def on_request(ch, method, props, body, logger):
                               execution_id=execution_id, 
                               parametric_args=None,
                               user_id=user_id, 
+                              public_ip=None,
                               token=token, 
                               json_action=json_action)
             
             response_message = json.loads(result)
             logger.info(f"{json_action} RESPONSE: {response_message}")
  
-        elif len(components) == 7 and components[0] != "None":
-            tool_id, task_id, execution_id, parametric_args, user_id, token, json_action = map(str, components)
+        elif len(components) == 8 and components[0] != "None":
+            tool_id, task_id, execution_id, parametric_args, user_id, public_ip, token, json_action = map(str, components)
             #Convert the parametric_args variable into a dictionary
             parametric_args = eval(parametric_args)
             logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}')
@@ -135,6 +136,7 @@ def on_request(ch, method, props, body, logger):
                               execution_id=execution_id, 
                               parametric_args=parametric_args,
                               user_id=user_id, 
+                              public_ip = public_ip,
                               token=token, 
                               json_action=json_action)
             
