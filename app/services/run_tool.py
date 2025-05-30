@@ -3,7 +3,6 @@ import os
 import logging
 import subprocess
 import re
-import threading
 from .utils import *
 from .data_operations import *
 from .check_resources import *
