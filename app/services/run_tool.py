@@ -243,9 +243,19 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, publ
         logger.info(f"Task info correctly fetched for {json_action}")
         
         # Extract command and arguments from the JSON
-        cmd = json_config.get(str(json_action), {}).get("cmd", {})
+        # Take into account wheter or not GPUs were detected:
+        if json_action == "submit_run":
+            pre_checks_result=json.loads(pre_checks_result)
+            if pre_checks_result.get('gpu_check', {}).get('gpu_detected') == True:
+                cmd = json_config.get(str(json_action), {}).get("cmd_gpu", {})
+            else: 
+                cmd = json_config.get(str(json_action), {}).get("cmd", {})
+        else:
+                cmd = json_config.get(str(json_action), {}).get("cmd", {})
         if not cmd:
-            raise ValueError("Command to run is not defined in the JSON configuration")
+            error_message = "Command to run is not defined in the JSON configuration"
+            logger.info(error_message)
+            return error_message
         
         # Ensure cmd is always a string
         if isinstance(cmd, list):
