@@ -111,12 +111,12 @@ def on_request(ch, method, props, body, logger):
         #     logger.info(f"[.] Done processing folder: {folder}, execution_id: {execution_id}, user_id: {user_id}")
 
         if len(components) == 5:
-            task_id, execution_id, user_id, token, json_action = map(str, components)
-            logger.info(f'[.] Received {json_action} command for execution_id: {execution_id}, user_id: {user_id}')
+            task_id, execution, user_id, token, json_action = components
+            logger.info(f'[.] Received {json_action} command for execution_id: {execution}, user_id: {user_id}')
 
             result = run_tool(api_base_url=config.api_base_url, 
                               task_id=task_id, 
-                              execution_id=execution_id, 
+                              execution=execution, 
                               parametric_args=None,
                               user_id=user_id, 
                               public_ip=None,
@@ -127,14 +127,14 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"{json_action} RESPONSE: {response_message}")
  
         elif len(components) == 8 and components[0] != "None":
-            tool_id, task_id, execution_id, parametric_args, user_id, public_ip, token, json_action = map(str, components)
+            tool_id, task_id, execution, parametric_args, user_id, public_ip, token, json_action = components
             #Convert the parametric_args variable into a dictionary
             parametric_args = eval(parametric_args)
-            logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, execution_id: {execution_id}, user_id: {user_id}')
+            logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, user_id: {user_id}')
 
             result = run_tool(api_base_url=config.api_base_url, 
                               task_id=task_id, 
-                              execution_id=execution_id, 
+                              execution=execution, 
                               parametric_args=parametric_args,
                               user_id=user_id, 
                               public_ip = public_ip,
