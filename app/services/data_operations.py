@@ -11,6 +11,9 @@ import json
 #from requests_toolbelt.multipart.encoder import MultipartEncoder
 #import base64
 import mimetypes
+import docker
+import tarfile
+import io
 
 api_base_url = config.api_base_url
 data_path=config.data_path
@@ -179,37 +182,58 @@ def send_single_file(file_path, url, headers, timeout=30):
         logging.error(f"Error sending file bytes for {file_path}: {e}")
         return False, f"Error sending file bytes for {file_path}: {e}"
 
-def list_files(user_id: str, folder_path: str, subfolder: str = None) -> list:
-    if folder_path == "sandbox_path":
-        full_path = sandbox_path
-    elif folder_path == "data_path":
-        full_path = data_path
-    else:
-        if os.path.isabs(folder_path):
-            if os.path.exists(folder_path):
-                full_path = folder_path
-            elif os.path.exists(f"/{folder_path}"):
-                full_path = f"/{folder_path}"
-            else:
-                logging.error(f"Folder '{folder_path}' does not exist.")
-                raise FileNotFoundError(f"Folder '{folder_path}' does not exist.")
-        else:
-            if os.path.exists(f"/{folder_path}"):
-                full_path = f"/{folder_path}"
-            else:
-                full_path = os.path.join(data_path, folder_path, subfolder) if subfolder else os.path.join(data_path, folder_path)
-                if not os.path.exists(full_path):
-                    full_path = os.path.join(sandbox_path, user_id, folder_path, subfolder) if subfolder else os.path.join(sandbox_path, user_id, folder_path)
+def list_files(container_id, path):
+    client = docker.from_env()
 
-    logging.info(f"Using path: {full_path}")
+    try:
+        container = client.containers.get(container_id)
+        stream, _ = container.get_archive(path)
+        tar_stream = io.BytesIO(b''.join(stream))
 
-    if not os.path.exists(full_path):
-        logging.error(f"Folder '{full_path}' does not exist.")
-        raise FileNotFoundError(f"Folder '{full_path}' does not exist.")
-    if not os.path.isdir(full_path):
-        logging.error(f"'{full_path}' is not a directory.")
-        raise NotADirectoryError(f"'{full_path}' is not a directory.")
+        path_prefix = path.strip('/') + '/'
+        tree = {}
 
-    files = os.listdir(full_path)
-    return files
+        with tarfile.open(fileobj=tar_stream, mode='r|*') as tar:
+            for member in tar:
+                rel_path = member.name.strip('/')
+                if rel_path.startswith(path_prefix):
+                    rel_path = rel_path[len(path_prefix):]
+
+                if not rel_path:
+                    continue
+
+                parts = rel_path.split('/')
+                current = tree
+                for i, part in enumerate(parts):
+                    is_last = (i == len(parts) - 1)
+                    if is_last:
+                        # File or folder
+                        if member.isdir():
+                            current.setdefault(part, {"files": []})
+                        else:
+                            # Add file to 'files' list of current folder
+                            current.setdefault("files", [])
+                            current["files"].append(part)
+                    else:
+                        # Go deeper into subfolder
+                        if part not in current:
+                            current[part] = {"files": []}
+                        current = current[part]
+
+        # Clean up empty "files": [] lists 
+        def cleanup(d):
+            if "files" in d and not d["files"]:
+                del d["files"]
+            for k, v in list(d.items()):
+                if isinstance(v, dict):
+                    cleanup(v)
+                    if not v:  # remove empty dicts
+                        del d[k]
+
+        cleanup(tree)
+        return tree
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return {f"Error: {e}"}
 
