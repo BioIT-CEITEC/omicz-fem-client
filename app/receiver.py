@@ -60,6 +60,7 @@ def on_request(ch, method, props, body, logger):
         # Extracting tool_id, task_id, execution_id, and user_id from the body
         body_str = body.decode('utf-8')
         components = body_str.split('|')
+        components = [None if (isinstance(c, str) and c.strip("'\"") == "None") else c for c in components]
         logger.info(f'[.] Received command {components}')
         response_message = {} 
         
@@ -144,7 +145,7 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"RESPONSE: {response_message}")
  
         elif components[0] == "list_files":
-            container_id, path = map(str, components[1:3])
+            container_id, path = components[1:3]
             logger.info(f'[.] Received list_files command for path: {path}, container: {container_id}')
 
             response_message = list_files(container_id=container_id,
