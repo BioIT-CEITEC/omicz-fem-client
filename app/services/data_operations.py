@@ -7,6 +7,7 @@ import mimetypes
 import docker
 import tarfile
 import io
+import socket
 
 api_base_url = config.api_base_url
 data_path=config.data_path
@@ -138,9 +139,13 @@ def send_single_file(file_path, url, headers, timeout=30):
         return False, f"Error sending file bytes for {file_path}: {e}"
 
 def list_files(container_id, path):
-    client = docker.from_env()
-
     try:
+        client = docker.from_env()
+
+        if container_id is None:
+            container_id = socket.gethostname()
+            path = f"/app{path}"
+
         container = client.containers.get(container_id)
         stream, _ = container.get_archive(path)
         tar_stream = io.BytesIO(b''.join(stream))
@@ -162,27 +167,24 @@ def list_files(container_id, path):
                 for i, part in enumerate(parts):
                     is_last = (i == len(parts) - 1)
                     if is_last:
-                        # File or folder
                         if member.isdir():
                             current.setdefault(part, {"files": []})
                         else:
-                            # Add file to 'files' list of current folder
                             current.setdefault("files", [])
                             current["files"].append(part)
                     else:
-                        # Go deeper into subfolder
                         if part not in current:
                             current[part] = {"files": []}
                         current = current[part]
 
-        # Clean up empty "files": [] lists 
+        # Clean empty folders/files
         def cleanup(d):
             if "files" in d and not d["files"]:
                 del d["files"]
             for k, v in list(d.items()):
                 if isinstance(v, dict):
                     cleanup(v)
-                    if not v:  # remove empty dicts
+                    if not v:
                         del d[k]
 
         cleanup(tree)
@@ -190,5 +192,5 @@ def list_files(container_id, path):
 
     except Exception as e:
         print(f"Error: {e}")
-        return {f"Error: {e}"}
+        return {"Error": str(e)}
 
