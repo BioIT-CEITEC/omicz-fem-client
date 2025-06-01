@@ -1,15 +1,8 @@
-#import time
-#import subprocess
-#from pathlib import Path
-#from typing import List
 from config import config
 import os
 import requests
 import logging
 import json
-#import shutil 
-#from requests_toolbelt.multipart.encoder import MultipartEncoder
-#import base64
 import mimetypes
 import docker
 import tarfile
@@ -23,7 +16,6 @@ node_name=config.node_name
 def send_generated_files(api_base_url, generated_files, task_id, execution_id, user_id, token):
     
     try:
-        #api_url = f"https://fl.bsc.es/flmanager/API/v1/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
         api_url = f"{api_base_url}/data/file/{task_id}?user_id={user_id}&execution_id={execution_id}"
 
         # Logging the attempt to send generated files
@@ -63,10 +55,6 @@ def send_generated_files(api_base_url, generated_files, task_id, execution_id, u
         # Logging request-related exceptions
         logging.error(f"Request exception while sending generated files. Error: {req_exception}")
 
-
-# Constants
-#BASE_URL = "https://fl.bsc.es/flmanager/API/v1"
-#PUSH_FILE_CONTENT_URL = f"{BASE_URL}/data/push_file_content"
 
 def send_file_bytes(api_base_url, sandbox_path, user_id, token, execution_id):
     """
@@ -115,39 +103,6 @@ def send_file_bytes(api_base_url, sandbox_path, user_id, token, execution_id):
             logging.warning(f"Skipping non-file entry: {full_file_path}")
 
     return True, "All files in the directory have been sent successfully."
-
-#    try:
-        #url = f"{PUSH_FILE_CONTENT_URL}?user_id={user_id}&execution_id={execution_id}&file_uri={file_uri}"
-#        url = f"{api_base_url}/data/push_file_content/?user_id={user_id}&execution_id={execution_id}&file_uri={file_uri}"
-
-        # Check if the file or directory exists
-#        if not os.path.exists(file_uri):
-#            # Constructing the path using the sandbox root
-#            file_path = os.path.join(sandbox_path, file_uri)
-#            if not os.path.exists(file_path):
-#                logging.error(f"File not found: {file_path}")
-#                return False, f"File not found: {file_path}"
-#        else:
-#            file_path = file_uri
-
-#        # Check if the path is a directory
-#        if os.path.isdir(file_path):
-#            logging.info(f"Directory found: {file_path}. Sending files inside the directory.")
-#            # Iterate over each file in the directory and send them
-#            for root, _, files in os.walk(file_path):
-#                for name in files:
-#                    full_path = os.path.join(root, name)
-#                    result, message = send_single_file(full_path, url, username, password, timeout)
-#                    if not result:
-#                        return False, message
-#            return True, "All files in the directory have been sent successfully."
-#        else:
-#            # Send the single file
-#            return send_single_file(file_path, url, username, password, timeout)
-
-#    except Exception as e:
-#        logging.error(f"Error sending file bytes: {e}")
-#        return False, f"Error sending file bytes: {e}"
 
 def send_single_file(file_path, url, headers, timeout=30):
     """
