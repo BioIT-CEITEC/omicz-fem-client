@@ -142,6 +142,16 @@ def on_request(ch, method, props, body, logger):
             
             response_message = json.loads(result)
             logger.info(f"RESPONSE: {response_message}")
+ 
+        elif components[0] == "list_files":
+            container_id, path = map(str, components[1:3])
+            logger.info(f'[.] Received list_files command for path: {path}, container: {container_id}')
+
+            response_message = list_files(container_id=container_id,
+                                path=path)
+            
+            #response_message = json.loads(result)
+            logger.info(f"list_files RESPONSE: {response_message}")
 
         else:
             logger.error(f"Invalid body format. Expected 3 or 4 components separated by colons, but received: {body_str}")
