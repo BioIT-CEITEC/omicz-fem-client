@@ -181,7 +181,12 @@ def clean_composed_command(command):
     
     return cleaned_command
 
-def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, public_ip, token, json_action):
+def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_ip, token, json_action):
+    
+    logger = logging.getLogger("receiver")
+    execution = json.loads(execution)
+    execution_id = execution.get('execution_id')
+    logger.info(f"execution_id: {execution_id}")
 
     try: 
         # Define directories
@@ -202,7 +207,6 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, publ
        
     
     try:
-        logger = logging.getLogger("receiver")
         logger.info(f"Starting {json_action} command for execution_id: {execution_id}, user_id: {user_id}")
                 
         # Load the JSON launcher configuration
@@ -210,7 +214,7 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, publ
         logger.info(f"json_launcher: {json_launcher_path}")
         if not json_launcher_path or not os.path.isfile(json_launcher_path):
             raise FileNotFoundError(f"JSON launcher configuration file not found at: {json_launcher_path}")
-        
+
         with open(json_launcher_path, "r") as json_file:
             json_config = json.load(json_file)
 
@@ -225,12 +229,8 @@ def run_tool(api_base_url, task_id, execution_id, parametric_args, user_id, publ
                 return pre_checks_result
         else: 
             #If there's no task/tool info provided, fetch the execution info
-            headers = {'Content-Type': 'application/json',
-                "Authorization": f"Bearer {token}" }
-            response = requests.get(f"{api_base_url}/executions/{execution_id}", headers=headers)
-            execution = response.json()
             # Extract process_info list from the execution
-            process_info_list = execution.get("result", {}).get("process_info", [])
+            process_info_list = execution.get("process_info", [])
 
             # Find the process_info entry matching the specified node
             task_info = next(
