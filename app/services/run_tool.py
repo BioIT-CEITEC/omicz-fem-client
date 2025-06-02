@@ -7,6 +7,7 @@ from .utils import *
 from .data_operations import *
 from .check_resources import *
 from config import config
+import ast
 
 def replace_api_placeholders(cmd, config_json, json_action):
     """
@@ -167,7 +168,7 @@ def clean_composed_command(command):
     
     return cleaned_command
 
-def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_ip, token, json_action):
+def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_action):
     
     logger = logging.getLogger("receiver")
     execution = json.loads(execution)
@@ -204,9 +205,11 @@ def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_
         with open(json_launcher_path, "r") as json_file:
             json_config = json.load(json_file)
 
-        #Fetch Task info or Execution info from DDBB:
+        task_info = ast.literal_eval(task_info)
+        task_id = task_info.get("_id")
+
+        # Use either task_info or execution object depending on the received components:
         if json_action == "submit_run":
-            task_info = fetch_task_info(api_base_url, task_id)
             pre_checks_result = pre_checks(public_ip)
             #logger.info(f"task_info: {task_info}")
             #logger.info(f"Pre-checks result: {pre_checks_result}")
@@ -214,7 +217,7 @@ def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_
             if task_id == "health-check":
                 return pre_checks_result
         else: 
-            #If there's no task/tool info provided, fetch the execution info
+            #If there's no task/tool info provided, use the execution object
             # Extract process_info list from the execution
             process_info_list = execution.get("process_info", [])
 
@@ -271,11 +274,10 @@ def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_
         # Function arguments to check for placeholders
         argument_values = {
             "node_name": config.node_name,
-            "api_base_url": api_base_url,
+            "api_base_url": config.api_base_url,
             "task_id": task_id,
             "execution_id": execution_id,
-            "user_id": user_id,
-            "token": token
+            "user_id": user_id
         }
 
         processed_placeholders = set()  # To keep track of placeholders already processed
