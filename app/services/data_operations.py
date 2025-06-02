@@ -81,7 +81,7 @@ def send_files_as_json(user_id: str, execution_id:str, file: str = None) -> str:
         FileNotFoundError: If the path does not exist.
     """
     # Convert file paths to absolute paths
-    path = os.path.join("/sandbox", user_id, execution_id, file)
+    path = os.path.join("/app/sandbox", user_id, execution_id, file)
     logging.info(f"Sending file or folder: {path}")
 
     if not os.path.exists(path):
