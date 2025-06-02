@@ -1,6 +1,5 @@
 import os
 import logging
-import json
 import docker
 import tarfile
 import io
