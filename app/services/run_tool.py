@@ -238,8 +238,8 @@ def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_
                 None  # Default value if no match is found
             )
 
-            if not task_info:
-                raise ValueError("Not task_info or execution_info downloaded from DDBB")
+        if not task_info:
+            raise ValueError("Not task_info or execution_info downloaded from DDBB")
         logger.info(f"Task info correctly fetched for {json_action}")
         
         # Extract command and arguments from the JSON
