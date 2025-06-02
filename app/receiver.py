@@ -156,7 +156,7 @@ def on_request(ch, method, props, body, logger):
 
         elif components[0] == "send_files":
             user_id, execution_id, file = components[1:4]
-            logger.info(f'[.] Received list_files command for path: {path}, container: {container_id}')
+            logger.info(f'[.] Received send_files command for execution_id: {execution_id}')
 
             response_message = send_files_as_json(user_id = user_id, 
                                                   execution_id = execution_id, 
