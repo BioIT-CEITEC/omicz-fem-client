@@ -284,7 +284,7 @@ def run_tool(api_base_url, task_id, execution, parametric_args, user_id, public_
 
         # Function arguments to check for placeholders
         argument_values = {
-            "node_name": node_name,
+            "node_name": config.node_name,
             "api_base_url": api_base_url,
             "task_id": task_id,
             "execution_id": execution_id,
