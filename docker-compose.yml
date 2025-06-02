@@ -8,6 +8,8 @@ services:
       - UID=$UID
       - GID=$GID
       - HOST_FEMC_PATH=$HOST_FEMC_PATH
+      - SANDBOX_PATH=$SANDBOX_PATH
+      - DATA_PATH=$DATA_PATH
       - LOG_FILE=/app/receiver.log
     volumes:
       - ./config:/app/config
