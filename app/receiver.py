@@ -80,9 +80,10 @@ def on_request(ch, method, props, body, logger):
  
         elif len(components) == 7 and components[0] != "None":
             tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action = components
+            task_id = {re.search(r"'_id'\s*:\s*'([^']+)'", task_info)}
             #Convert the parametric_args variable into a dictionary
             parametric_args = eval(parametric_args)
-            logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {re.search(r"'_id'\s*:\s*'([^']+)'", task_info)}, user_id: {user_id}')
+            logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, user_id: {user_id}')
 
             result = run_tool(task_info=task_info, 
                               execution=execution, 
