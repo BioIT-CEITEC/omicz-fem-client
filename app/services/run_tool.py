@@ -7,20 +7,6 @@ from .utils import *
 from .data_operations import *
 from .check_resources import *
 from config import config
-import requests
-
-api_base_url=config.api_base_url
-def fetch_task_info(api_base_url, task_id):
-    try:
-        # Make a request to the endpoint to get the tool information
-        #response = requests.get(f"https://fl.bsc.es/flmanager/API/v1/tools/{tool_id}")
-        response = requests.get(f"{api_base_url}/tasks/{task_id}")
-        task_info = response.json()
-        return task_info
-    except Exception as e:
-        print(f"Error fetching tool information: {e}")
-        return None
-
 
 def replace_api_placeholders(cmd, config_json, json_action):
     """
