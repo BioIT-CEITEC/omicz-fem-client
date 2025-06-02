@@ -64,52 +64,6 @@ def on_request(ch, method, props, body, logger):
         logger.info(f'[.] Received command {components}')
         response_message = {} 
         
-        #if components[0] == 'None':
-        # if len(components) == 4:
-        #     logger.info(f'[.] Received command {components}')
-        #     file_uri, execution_id, user_id, token = map(str, components)
-        #     tool_id = None
-        #     task_id = None
-        #     logger.info(f'[.] Received command for file_uri: {file_uri}, execution_id: {execution_id}, user_id: {user_id}')
-
-        #     # If it's a file URI, send file bytes
-        #     result = send_file_bytes(config.api_base_url, sandbox_path, user_id=user_id, token=token, execution_id=execution_id)
-        #     response, command_message = result
-        #     response_message = {"response": response, "command_message": command_message}
-        #     logger.info(f"RESPONSE: {response}, {command_message}")
-
-        #     # Convert response_message to JSON
-        #     response_body = json.dumps(response_message)
-
-        #     # Assuming ch, props are defined elsewhere
-        #     ch.basic_publish(
-        #         exchange='',
-        #         routing_key=props.reply_to,
-        #         properties=pika.BasicProperties(correlation_id=props.correlation_id),
-        #         body=response_body.encode('utf-8')
-        #     )
-        #     logger.info(f"[.] Done processing file_uri: {file_uri}, execution_id: {execution_id}, user_id: {user_id}")
-
-        # elif len(components) == 3:
-        #     #logger.info(f"components: {components}")
-        #     file, execution_id, user_id, token = map(str, components[0:])
-        #     folder = execution_id
-        #     file_list = list_files(user_id, folder)
-        #     response_message = {"response": "success", "file_list": file_list}
-        #     logger.info(f"RESPONSE: success, file_list: {file_list}")
-
-        #     # Convert response_message to JSON
-        #     response_body = json.dumps(response_message)
-
-        #     # Assuming ch, props are defined elsewhere
-        #     ch.basic_publish(
-        #         exchange='',
-        #         routing_key=props.reply_to,
-        #         properties=pika.BasicProperties(correlation_id=props.correlation_id),
-        #         body=response_body.encode('utf-8')
-        #     )
-        #     logger.info(f"[.] Done processing folder: {folder}, execution_id: {execution_id}, user_id: {user_id}")
-
         if len(components) == 5:
             task_id, execution, user_id, token, json_action = components
             logger.info(f'[.] Received {json_action} command for execution_id: {execution}, user_id: {user_id}')
