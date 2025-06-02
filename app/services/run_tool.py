@@ -363,74 +363,12 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         # Run the command
         process = subprocess.run(resolved_cmd, shell=True, capture_output=True)
 
-        # If the image is not found, handle the error
-#        if process.returncode != 0:
-#            stderr = process.stderr.decode().strip()
-#            if "Unable to find image" in stderr:
-#                logger.info("Docker image not found. Attempting docker pull...")
-
-                # Get source code URL from task_info
-#                image_url = task_info.get("image", {}).get("url")
-#                if image_url:
-                    # Attempt to pull the Docker image using the URL
-#                    pull_command = f"docker pull {image_url}"
-#                    pull_process = subprocess.run(pull_command, shell=True, capture_output=True)
-                    
-#                    if pull_process.returncode == 0:
-#                        logger.info(f"Docker image {image_url} pulled successfully.")
-
-                        # Re-run the Docker command
-#                        process = subprocess.run(resolved_cmd, shell=True, capture_output=True)
-        
-#        if process.returncode == 0:
         response = process.stdout.decode().strip()
         logger.info(f"Command executed successfully: {response}")
             
         return response
-            
-            # Simulate waiting for files to be generated (this can be replaced with a more accurate wait/check)
-            # sandbox_path = os.environ.get("SANDBOX_PATH", "/sandbox")
-            # generated_files_path = os.path.join(sandbox_path, user_id, execution_id)
-            # time.sleep(5)  # Adjust this depending on how long the container takes to generate the files
-            
-            # # Assuming files are generated in this folder, list them
-            # if os.path.exists(generated_files_path):
-            #     generated_files = os.listdir(generated_files_path)
-            #     logger.info(f"Generated files: {generated_files}")
-            #     send_generated_files(api_base_url, generated_files, task_id, execution_id, user_id, token)
-                
-            #     return response, generated_files
-            # else:
-            #     error_message = f"Generated files not found at {generated_files_path}"
-            #     logger.error(error_message)
-            #     return error_message
-#        else:
-#            error_message = {
-#                "error": "Error executing command.",
-#                "Exit code": process.returncode,
-#                "Stdout": process.stdout.decode().strip(),
-#                "Stderr": process.stderr.decode().strip()
-#            }
-#            logger.error(error_message)
-#            return error_message
 
     except Exception as e:
         error_message = f"An error occurred: {e}"
         logger.info(error_message)
         return error_message
-
-
-
-# if __name__ == '__main__': # TODO Decide whether to keep command line usage, needs to read config
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--task_id", help="ID of the task to run", type=str)
-#     parser.add_argument("--user_id", help="User ID", type=str)
-#     args = parser.parse_args()
-    
-    
-#     logging.basicConfig(level=logging.INFO)
-    
-#     logger = logging.getLogger(__name__)
-#     logger.info(f"Running tool for task_id: {args.task_id}")
-    
-#     run_tool(api_base_url, args.task_id, execution_id, args.user_id)
