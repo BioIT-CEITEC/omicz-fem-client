@@ -17,12 +17,16 @@ CONFIG_FILE="./config/config.py"
 DATA_PATH=$(grep -oP "data_path\s*=\s*'[^']+'" "$CONFIG_FILE" | awk -F"'" '{print $2}')
 SANDBOX_PATH=$(grep -oP "sandbox_path\s*=\s*'[^']+'" "$CONFIG_FILE" | awk -F"'" '{print $2}')
 HOST_FEMC_PATH=$(pwd)
+UID=$(id -u)
+GID=$(id -g)
 
 # Create .env file with DATA_PATH and SANDBOX_PATH
 echo "DATA_PATH=${DATA_PATH}" > .env
 echo "SANDBOX_PATH=${SANDBOX_PATH}" >> .env
 echo "HOST_FEMC_PATH=${HOST_FEMC_PATH}" >> .env
 echo "LOG_FILE=${LOG_FILE}" >> .env
+echo "UID=${UID}" >> .env
+echo "GID=${GID}" >> .env
 
 # Log a message indicating setup
 echo "Resolved data_path: $DATA_PATH"
