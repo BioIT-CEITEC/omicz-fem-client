@@ -38,6 +38,83 @@ This flexible architecture ensures the FEM-client can be integrated with a wide 
 
 > Please, consider that tools, pipelines or FL frameworks triggered by FEM have their on connectivity requirements.
 
+### Optional: GPU setup
+
+This section is not mandatory, but if the host system is not correctly set up, the FEM-client will not be able to use the GPUs. 
+Just in case, FEM-client is prepared to fallback to CPU usage if the configuration fails.
+
+```
+# Check if nvidia drivers and utils are installed in the system
+nvidia-smi -L
+```
+Example of expected output (anything that's not an error):
+
+`GPU 0: NVIDIA GeForce RTX 3060 (UUID: GPU-b90ebde0-2285-0f1e-249e-55dc6dd7abf1)`
+
+```
+nvidia-container-runtime --version
+```
+
+Example of expected output (anything that's not an error):
+
+`Nvidia Container Runtime Hook Version 1.17.7
+commit: bae3e7842ebe26812d8bd6a9be6a14a83dc91d8f`
+
+```
+docker info | grep -A5 Runtimes
+```
+Example of expected output (nvidia included in runtimes):
+```
+ Runtimes: oci runc io.containerd.runc.v2 nvidia
+ Default Runtime: runc
+ Init Binary: docker-init
+ containerd version: 05044ec0a9a75232cad458027ca83437aae3f4da
+ runc version: v1.1.14-0-g2c9f5602f0ba
+ init version:
+```
+
+If any of the previous gives an error, install the needed packages, drivers or config from the ones provided: 
+sudo apt update
+
+```
+# Install/Update nvidia drivers
+### CAUTION: Updating NVIDIA drivers may affect existing GPU workloads or compatibility. Ensure you review driver requirements and test appropriately in your environment. ###
+sudo apt install nvidia-driver-570-server
+sudo apt install nvidia-utils-570-server
+
+# Install the nvidia-container-toolkit
+# Point to the necessary repositories:
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+	sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+	sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt install nvidia-container-toolkit
+
+# Let docker allow nvidia as runtime:
+sudo nano /etc/docker/daemon.json
+```
+
+Paste this inside: 
+```
+{
+       "runtimes": {
+        "nvidia": {
+            "args": [],
+            "path": "nvidia-container-runtime"
+        }
+   }
+}
+```
+If any of the changes were made, restart the docker runner:
+```
+# Restart docker
+sudo systemctl restart docker 
+
+# Retry commands of previous block
+```
+
+
+
 ## Getting Started
 
 1. Clone the repository:
