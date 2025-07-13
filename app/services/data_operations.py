@@ -1,52 +1,48 @@
 import os
 import logging
-import docker
-import tarfile
-import io
-import socket
 import base64
 from config import config
 
-def list_files(container_id, path):
+def list_files(user_id, execution_id, path):
     try:
-        client = docker.from_env()
+        # Get SANDBOX and DATA base paths from env
+        sandbox_base = os.environ.get("SANDBOX_PATH", "/app/sandbox")
+        data_base = os.environ.get("DATA_PATH", "/app/data")
 
-        if container_id is None:
-            container_id = socket.gethostname()
-            path = f"/app{path}"
+        path = os.path.normpath(path)
 
-        container = client.containers.get(container_id)
-        stream, _ = container.get_archive(path)
-        tar_stream = io.BytesIO(b''.join(stream))
+        if path.startswith("/sandbox"):
+            if not user_id or not execution_id:
+                raise ValueError("user_id and execution_id are required for /sandbox paths.")
+            target_path = os.path.join(sandbox_base, str(user_id), str(execution_id))
+        elif path.startswith("/data"):
+            # Trim "/data" and join any subpath
+            sub_path = path[5:].lstrip("/")
+            target_path = os.path.join(data_base, sub_path)
+        else:
+            raise ValueError("Path must start with /sandbox or /data.")
 
-        path_prefix = path.strip('/') + '/'
+        if not os.path.exists(target_path):
+            raise FileNotFoundError(f"Path does not exist: {target_path}")
+
         tree = {}
 
-        with tarfile.open(fileobj=tar_stream, mode='r|*') as tar:
-            for member in tar:
-                rel_path = member.name.strip('/')
-                if rel_path.startswith(path_prefix):
-                    rel_path = rel_path[len(path_prefix):]
+        for root, dirs, files in os.walk(target_path):
+            # Calculate relative path from the root sandbox dir
+            rel_root = os.path.relpath(root, target_path)
+            if rel_root == ".":
+                rel_root = ""
 
-                if not rel_path:
-                    continue
+            # Navigate to the correct place in the tree
+            parts = rel_root.split(os.sep) if rel_root else []
+            current = tree
+            for part in parts:
+                current = current.setdefault(part, {})
 
-                parts = rel_path.split('/')
-                current = tree
-                for i, part in enumerate(parts):
-                    is_last = (i == len(parts) - 1)
-                    if is_last:
-                        if member.isdir():
-                            current.setdefault(part, {"files": []})
-                        else:
-                            current.setdefault("files", [])
-                            current["files"].append(part)
-                    else:
-                        if part not in current:
-                            current[part] = {"files": []}
-                        current = current[part]
+            if files:
+                current.setdefault("files", []).extend(files)
 
-        # Clean empty folders/files
+        # Clean empty 'files' keys and empty folders
         def cleanup(d):
             if "files" in d and not d["files"]:
                 del d["files"]
