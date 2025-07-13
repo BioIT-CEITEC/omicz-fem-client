@@ -9,17 +9,8 @@ from services.check_resources import *
 from services.run_tool import *
 from services.data_operations import *
 from services.utils import *
+from config import config
 
-
-# Function to load configuration
-def load_configuration():
-    try:
-        import config.config as config
-        return config
-    except ImportError:
-        raise ImportError("Configuration file not found or has an invalid format.")
-    except Exception as e:
-        raise RuntimeError(f"Error loading configuration: {e}")
 
 # Function to setup logger
 def setup_logger():
@@ -51,7 +42,6 @@ def setup_logger():
 # Function to handle incoming requests
 def on_request(ch, method, props, body, logger):
     logger.info("[.] Received a message")
-    config = load_configuration()
 
     try:
         # Extracting components from the body
@@ -137,8 +127,6 @@ def on_request(ch, method, props, body, logger):
 def run_receiver():
     logger = setup_logger()
     logger.info(f"[.] Receiver process ID: {os.getpid()}")
-
-    config = load_configuration()
 
     try:
         if config.ssl_active:
