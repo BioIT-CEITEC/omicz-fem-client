@@ -111,7 +111,21 @@ def build_cwl_command(task_command, parametric_args=None):
         raise ValueError("Each item in 'args' must be a dictionary.")
 
     # Sort args based on the 'position' key if it exists
-    args = sorted(args, key=lambda x: x.get('position', float('inf')) if 'position' in x else float('inf'))
+    for i, arg in enumerate(args):
+        arg['_original_index'] = i  # Preserve original order for tie-breaking
+
+    args = sorted(
+        args,
+        key=lambda x: (
+            0 if isinstance(x['position'], int) else 1,  # positioned args first
+            x['position'] if isinstance(x['position'], int) else float('inf'),
+            x['_original_index']
+        )
+    )
+
+    for arg in args:
+        arg.pop('_original_index', None)
+
 
     # Build the command
     command_parts = [base_command]
