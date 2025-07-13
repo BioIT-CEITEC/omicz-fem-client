@@ -83,10 +83,11 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"RESPONSE: {response_message}")
  
         elif components[0] == "list_files":
-            container_id, path = components[1:3]
-            logger.info(f'[.] Received list_files command for path: {path}, container: {container_id}')
+            user_id, execution_id, path = components[1:4]
+            logger.info(f'[.] Received list_files command for path: {path}')
 
-            response_message = list_files(container_id=container_id,
+            response_message = list_files(user_id=user_id,
+                                execution_id=execution_id,
                                 path=path)
             
             #response_message = json.loads(result)
