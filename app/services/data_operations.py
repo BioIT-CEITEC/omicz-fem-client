@@ -84,7 +84,8 @@ def send_files_as_json(user_id: str, execution_id:str, file: str = None) -> str:
     try:
 
         # Convert file paths to absolute paths
-        path = os.path.join("/app/sandbox", user_id, execution_id, file)
+        sandbox_path = os.environ.get('SANDBOX_PATH', '/app/sandbox')
+        path = os.path.join(sandbox_path, user_id, execution_id, file)
         logging.info(f"Sending file or folder: {path}")
 
         if not os.path.exists(path):
