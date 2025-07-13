@@ -291,7 +291,9 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
             "api_base_url": config.api_base_url,
             "task_id": task_id,
             "execution_id": execution_id,
-            "user_id": user_id
+            "user_id": user_id,
+            "sandbox_path": config.sandbox_path,
+            "data_path": config.data_path
         }
 
         processed_placeholders = set()  # To keep track of placeholders already processed
