@@ -2,7 +2,7 @@ services:
   fem-client:
     build: ./
     container_name: fem-client
-    image: registry.gitlab.bsc.es/fl/fem-client:v2.1 
+    image: registry.gitlab.bsc.es/fl/fem-client:v2.2
     environment:
       - UID=${UID}
       - GID=${GID}
