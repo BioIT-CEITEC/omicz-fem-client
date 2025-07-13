@@ -2,7 +2,6 @@
 import pika
 import json
 import os
-from dotenv import load_dotenv
 import time
 import ssl
 import logging
@@ -11,8 +10,6 @@ from services.run_tool import *
 from services.data_operations import *
 from services.utils import *
 
-#read the .env file and load the variables
-load_dotenv()
 
 # Function to load configuration
 def load_configuration():
