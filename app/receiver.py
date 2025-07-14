@@ -10,7 +10,10 @@ from services.run_tool import *
 from services.data_operations import *
 from services.utils import *
 from config import config
+from dotenv import load_dotenv
 
+#read the .env file and load the variables
+load_dotenv()
 
 # Function to setup logger
 def setup_logger():
