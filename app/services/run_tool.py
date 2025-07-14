@@ -296,19 +296,13 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
             "data_path": config.data_path
         }
 
-        processed_placeholders = set()  # To keep track of placeholders already processed
-
-        while True:
-            # Find all placeholders in the current command
+        for _ in range(50):
             placeholders = placeholder_pattern.findall(resolved_cmd)
-            placeholders = [ph for ph in placeholders if ph not in processed_placeholders]
-
-            if not placeholders:  # Break if no new placeholders remain
-                break
+            if not placeholders:
+                break  # No more placeholders to process
 
             for placeholder in placeholders:
-                processed_placeholders.add(placeholder)
-
+                
                 # Build the task_command with the CWL format for that specific placeholder:
                 if placeholder == "TASK_COMMAND":
                     task_command = task_info.get("command")
