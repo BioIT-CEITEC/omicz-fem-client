@@ -182,7 +182,16 @@ def clean_composed_command(command):
     
     return cleaned_command
 
-def resolve_cmd_placeholders(json_config, cmd, argument_values=None, task_info=None, parametric_args=None): 
+def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None, task_info=None, parametric_args=None): 
+
+    # Ensure cmd is always a string
+    if isinstance(cmd, list):
+        cmd = "\n".join(cmd)
+    else:
+        cmd = cmd
+    
+    if cmd.startswith('curl -X'):
+        cmd = replace_api_placeholders(cmd, json_config, json_action)
 
     # Extract mapping dictionaries from the json_config
     task_info_vars = json_config.get("task_info_vars", {})
@@ -361,15 +370,6 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
             logging.info(error_message)
             return error_message
         
-        # Ensure cmd is always a string
-        if isinstance(cmd, list):
-            cmd = "\n".join(cmd)
-        else:
-            cmd = cmd
-        
-        if cmd.startswith('curl -X'):
-            cmd = replace_api_placeholders(cmd, json_config, json_action)
-        
 
     except Exception as e:
         error_message = f"An error occurred while fetching cmd: {e}"
@@ -378,7 +378,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     
     try:
 
-        resolved_cmd = resolve_cmd_placeholders(json_config, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
+        resolved_cmd = resolve_cmd_placeholders(json_config, json_action, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
         logger.info(f"Resolved command: {resolved_cmd}")
         
         # Run the command
