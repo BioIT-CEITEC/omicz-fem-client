@@ -190,7 +190,7 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
     else:
         cmd = cmd
     
-    if cmd.startswith('curl -X'):
+    if 'curl -X' in cmd:
         cmd = replace_api_placeholders(cmd, json_config, json_action)
 
     # Extract mapping dictionaries from the json_config
