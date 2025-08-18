@@ -336,7 +336,15 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
 
         # Use either task_info or execution object depending on the received components:
         if json_action == "submit_run":
-            pre_checks_result = pre_checks(public_ip)
+
+            # Resolve command to print available docker images
+            images_cmd=json_config.get("print_images", {}).get("cmd", {})
+
+            #It won't need task_info or dinamic variables, since it's a system command
+            images_cmd = resolve_cmd_placeholders(json_config, "print_images", images_cmd, argument_values, task_info="")
+
+            pre_checks_result = pre_checks(public_ip=public_ip,
+                                           images_cmd=images_cmd)
         
             if task_id == "health-check":
                 return pre_checks_result
