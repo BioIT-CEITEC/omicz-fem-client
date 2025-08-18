@@ -100,9 +100,9 @@ def check_resources(check):
 
     return filtered_resources
 
-def check_docker_images():
+def check_docker_images(images_cmd):
     try:
-        command = "docker images --digests --format '{{json .}}'"
+        command = images_cmd
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
         lines = result.stdout.strip().split("\n")
 
@@ -164,7 +164,7 @@ def check_pem_expiry(rabbitmq_folder):
 
 
 
-def pre_checks(public_ip=None):
+def pre_checks(images_cmd, public_ip=None):
     logging.info("Running all pre-checks...")
 
     results = {
@@ -173,7 +173,7 @@ def pre_checks(public_ip=None):
         "gpu_check": check_gpu(),
         "paths_check": check_paths(),
         "resources_check": check_resources("all"),
-        "docker_images_installed": check_docker_images(),
+        "docker_images_installed": check_docker_images(images_cmd),
         "pem_certificates": check_pem_expiry('/app/config/rabbitmq-certificates') 
     }
 
