@@ -318,6 +318,13 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         with open(json_launcher_path, "r") as json_file:
             json_config = json.load(json_file)
 
+    except Exception as e:
+        error_message = f"An error occurred while loading the json file: {e}"
+        logger.info(error_message)
+        return error_message 
+
+    try: 
+
         # Use either task_info or execution object depending on the received components:
         if json_action == "submit_run":
             pre_checks_result = pre_checks(public_ip)
@@ -365,7 +372,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         
 
     except Exception as e:
-        error_message = f"An error occurred while loading the json file: {e}"
+        error_message = f"An error occurred while fetching cmd: {e}"
         logger.info(error_message)
         return error_message 
     
