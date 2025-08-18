@@ -16,10 +16,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create a user and group with the given UID and GID
-RUN groupadd -g ${GID} prod && \
-    useradd -m -u ${UID} -g prod -s /bin/bash prod && \
-    usermod -aG docker prod && \
-    echo "prod ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN groupadd -g ${GID} prod || true && \
+    useradd -m -u ${UID} -g prod -s /bin/bash prod
 
 # Copy app and fix permissions
 COPY ./app/ /app/
