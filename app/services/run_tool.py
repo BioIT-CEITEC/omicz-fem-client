@@ -182,6 +182,91 @@ def clean_composed_command(command):
     
     return cleaned_command
 
+def resolve_cmd_placeholders(json_config, cmd, argument_values=None, task_info=None, parametric_args=None): 
+
+    # Extract mapping dictionaries from the json_config
+    task_info_vars = json_config.get("task_info_vars", {})
+    system_var_handler = json_config.get("system_var_handler", {})
+    site_vars = json_config.get("site_vars", {})
+
+    # Find all placeholders in the command string
+    placeholder_pattern = re.compile(r"%%(.*?)%%")
+    resolved_cmd = cmd
+
+    for _ in range(50):
+        placeholders = placeholder_pattern.findall(resolved_cmd)
+        if not placeholders:
+            break  # No more placeholders to process
+
+        for placeholder in placeholders:
+            
+            # Build the task_command with the CWL format for that specific placeholder:
+            if placeholder == "TASK_COMMAND":
+                task_command = task_info.get("command")
+                value = build_cwl_command(task_command, parametric_args=parametric_args)
+                if cmd.startswith('curl -X'):
+                    # Convert the command into a list format as a string
+                    value_as_list_str = "[" + ", ".join(f'"{part}"' for part in value.split()) + "]"
+                    
+                    # Replace the placeholder with the formatted list string
+                    resolved_cmd = resolved_cmd.replace(f'"%%{placeholder}%%"', value_as_list_str)
+                else:
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                continue
+
+            # Try resolving the placeholder from function arguments
+            if placeholder in site_vars:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", site_vars.get(placeholder))
+                continue
+
+            # Then, try resolving from task_info using task_info_vars
+            task_info_path = task_info_vars.get(placeholder)
+            if task_info_path:
+                if isinstance(task_info_path, list):  # Resolve nested keys
+                    value = task_info
+                    for key in task_info_path:
+                        if value is None:  # If any level is missing, stop
+                            break
+                        value = value.get(key)
+
+                elif isinstance(task_info_path, str):  # Resolve top-level keys
+                    value = task_info.get(task_info_path)
+
+                if value is not None:
+                    # Replace the placeholder with the resolved value
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
+                    # Check if the resolved value introduces new placeholders
+                    continue
+
+            # Replace the placeholders that need the system template:
+            if placeholder in system_var_handler:
+                task_info_data = task_info.get(placeholder.lower())
+                if task_info_data:  
+                    sys_template = system_var_handler.get(placeholder)
+                    value = template_format(task_info_data, sys_template)
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
+                else:
+                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
+                continue
+
+            # Try resolving the placeholder from function arguments
+            if placeholder in argument_values:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
+                continue
+
+            # Try resolving the placeholder from environment variables
+            env_value = os.environ.get(placeholder)
+            if env_value is not None:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
+                continue
+
+            # If the placeholder cannot be resolved, raise an error
+            raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
+    
+    resolved_cmd = clean_composed_command(resolved_cmd)
+
+    return resolved_cmd
+
 def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_action):
     
     logger = logging.getLogger("receiver")
@@ -189,9 +274,23 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     execution_id = execution.get('execution_id')
     logger.info(f"execution_id: {execution_id}")
 
+    task_info = ast.literal_eval(task_info)
+    task_id = task_info.get("_id")
+
+    # Dictionari of internal function variables
+    argument_values = {
+        "node_name": config.node_name,
+        "api_base_url": config.api_base_url,
+        "task_id": task_id,
+        "execution_id": execution_id,
+        "user_id": user_id,
+        "sandbox_path": config.sandbox_path,
+        "data_path": config.data_path
+    }
+
     try: 
         # Define directories
-        user_folder = os.path.join(config.sandbox_path, user_id)
+        user_folder = os.path.join(os.getenv("SANDBOX_PATH"), user_id)
         execution_folder = os.path.join(user_folder, execution_id)
 
         # Check and create directories if they don't exist
@@ -219,14 +318,9 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         with open(json_launcher_path, "r") as json_file:
             json_config = json.load(json_file)
 
-        task_info = ast.literal_eval(task_info)
-        task_id = task_info.get("_id")
-
         # Use either task_info or execution object depending on the received components:
         if json_action == "submit_run":
             pre_checks_result = pre_checks(public_ip)
-            #logger.info(f"task_info: {task_info}")
-            #logger.info(f"Pre-checks result: {pre_checks_result}")
         
             if task_id == "health-check":
                 return pre_checks_result
@@ -244,7 +338,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         if not task_info:
             raise ValueError("Not task_info or execution_info downloaded from DDBB")
         logger.info(f"Task info correctly fetched for {json_action}")
-        
+
         # Extract command and arguments from the JSON
         # Take into account wheter or not GPUs were detected:
         if json_action == "submit_run":
@@ -257,7 +351,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
                 cmd = json_config.get(str(json_action), {}).get("cmd", {})
         if not cmd:
             error_message = "Command to run is not defined in the JSON configuration"
-            logger.info(error_message)
+            logging.info(error_message)
             return error_message
         
         # Ensure cmd is always a string
@@ -268,6 +362,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         
         if cmd.startswith('curl -X'):
             cmd = replace_api_placeholders(cmd, json_config, json_action)
+        
 
     except Exception as e:
         error_message = f"An error occurred while loading the json file: {e}"
@@ -276,98 +371,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     
     try:
 
-        # Extract mapping dictionaries from the json_config
-        task_info_vars = json_config.get("task_info_vars", {})
-        system_var_handler = json_config.get("system_var_handler", {})
-        site_vars = json_config.get("site_vars", {})
-
-        # Find all placeholders in the command string
-        placeholder_pattern = re.compile(r"%%(.*?)%%")
-        resolved_cmd = cmd
-
-        # Function arguments to check for placeholders
-        argument_values = {
-            "node_name": config.node_name,
-            "api_base_url": config.api_base_url,
-            "task_id": task_id,
-            "execution_id": execution_id,
-            "user_id": user_id,
-            "sandbox_path": config.sandbox_path,
-            "data_path": config.data_path
-        }
-
-        for _ in range(50):
-            placeholders = placeholder_pattern.findall(resolved_cmd)
-            if not placeholders:
-                break  # No more placeholders to process
-
-            for placeholder in placeholders:
-                
-                # Build the task_command with the CWL format for that specific placeholder:
-                if placeholder == "TASK_COMMAND":
-                    task_command = task_info.get("command")
-                    value = build_cwl_command(task_command, parametric_args=parametric_args)
-                    if cmd.startswith('curl -X'):
-                        # Convert the command into a list format as a string
-                        value_as_list_str = "[" + ", ".join(f'"{part}"' for part in value.split()) + "]"
-                        
-                        # Replace the placeholder with the formatted list string
-                        resolved_cmd = resolved_cmd.replace(f'"%%{placeholder}%%"', value_as_list_str)
-                    else:
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                    continue
-
-                # Try resolving the placeholder from function arguments
-                if placeholder in site_vars:
-                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", site_vars.get(placeholder))
-                    continue
-
-                # Then, try resolving from task_info using task_info_vars
-                task_info_path = task_info_vars.get(placeholder)
-                if task_info_path:
-                    if isinstance(task_info_path, list):  # Resolve nested keys
-                        value = task_info
-                        for key in task_info_path:
-                            if value is None:  # If any level is missing, stop
-                                break
-                            value = value.get(key)
-
-                    elif isinstance(task_info_path, str):  # Resolve top-level keys
-                        value = task_info.get(task_info_path)
-
-                    if value is not None:
-                        # Replace the placeholder with the resolved value
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(value))
-                        # Check if the resolved value introduces new placeholders
-                        continue
-
-                # Replace the placeholders that need the system template:
-                if placeholder in system_var_handler:
-                    task_info_data = task_info.get(placeholder.lower())
-                    if task_info_data:  
-                        sys_template = system_var_handler.get(placeholder)
-                        value = template_format(task_info_data, sys_template)
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", " ".join(value))
-                    else:
-                        resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", "")
-                    continue
-
-                # Try resolving the placeholder from function arguments
-                if placeholder in argument_values:
-                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
-                    continue
-
-                # Try resolving the placeholder from environment variables
-                env_value = os.environ.get(placeholder)
-                if env_value is not None:
-                    resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", env_value)
-                    continue
-
-                # If the placeholder cannot be resolved, raise an error
-                raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
-        
-        resolved_cmd = clean_composed_command(resolved_cmd)
-
+        resolved_cmd = resolve_cmd_placeholders(json_config, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
         logger.info(f"Resolved command: {resolved_cmd}")
         
         # Run the command
@@ -379,6 +383,6 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         return response
 
     except Exception as e:
-        error_message = f"An error occurred: {e}"
+        error_message = f"An error occurred trying to resolve the cmd: {e}"
         logger.info(error_message)
         return error_message
