@@ -7,15 +7,15 @@ services:
       - UID=${UID}
       - GID=${GID}
       - HOST_FEMC_PATH=$HOST_FEMC_PATH
-      - SANDBOX_PATH=/app/sandbox
-      - DATA_PATH=/app/data
+      - SANDBOX_PATH=/sandbox
+      - DATA_PATH=/data
       - LOG_FILE=/app/receiver.log
     volumes:
       - ./config:/app/config
       - ./app/receiver.log:/app/receiver.log
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${DATA_PATH}:/app/data:ro
-      - ${SANDBOX_PATH}:/app/sandbox:shared
+      - ${DATA_PATH}:/data:ro
+      - ${SANDBOX_PATH}:/sandbox:shared
     ports:
       - "8080:8080"
     restart: always
