@@ -34,8 +34,8 @@ def check_gpu():
         return {"gpu_detected": False, "message": "No Nvidia GPU or driver error"}
 
 def check_paths():
-    sandbox_path = Path(os.environ.get('SANDBOX_PATH', '/app/sandbox'))
-    data_path = Path(os.environ.get('DATA_PATH', '/app/data'))
+    sandbox_path = Path(os.environ.get('SANDBOX_PATH', '/sandbox'))
+    data_path = Path(os.environ.get('DATA_PATH', '/data'))
 
     paths_status = {
         "sandbox_path_exists": sandbox_path.exists(),
