@@ -346,7 +346,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
             pre_checks_result = pre_checks(public_ip=public_ip,
                                            images_cmd=images_cmd)
         
-            if task_id == "health-check":
+            if "health-check" in task_id:
                 return pre_checks_result
         else: 
             #If there's no task/tool info provided, use the execution object
