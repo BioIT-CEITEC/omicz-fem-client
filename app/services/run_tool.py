@@ -184,6 +184,8 @@ def clean_composed_command(command):
 
 def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None, task_info=None, parametric_args=None): 
 
+    logger = logging.getLogger("receiver")
+
     # Ensure cmd is always a string
     if isinstance(cmd, list):
         cmd = "\n".join(cmd)
@@ -273,6 +275,7 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
             raise KeyError(f"Placeholder {placeholder} could not be resolved from environment or task_info")
     
     resolved_cmd = clean_composed_command(resolved_cmd)
+    logger.info(f"Resolved command: {resolved_cmd}")
 
     return resolved_cmd
 
@@ -387,7 +390,6 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     try:
 
         resolved_cmd = resolve_cmd_placeholders(json_config, json_action, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
-        logger.info(f"Resolved command: {resolved_cmd}")
         
         # Run the command
         process = subprocess.run(resolved_cmd, shell=True, capture_output=True)
