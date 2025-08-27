@@ -104,20 +104,8 @@ def check_docker_images(images_cmd):
     try:
         command = images_cmd
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        lines = result.stdout.strip().split("\n")
 
-        images = []
-        for line in lines:
-            if line.strip():
-                image_info = json.loads(line)
-                images.append({
-                    "repository": image_info.get("Repository", "<none>"),
-                    "tag": image_info.get("Tag", "<none>"),
-                    "image_id": image_info.get("ID", "Unknown"),
-                    "sha256_digest": image_info.get("Digest", "Unknown")
-                })
-
-        return {"docker_images": images}
+        return {"docker_images": json.loads(result.stdout.strip())}
     
     except Exception as e:
         return {"error": str(e)}
