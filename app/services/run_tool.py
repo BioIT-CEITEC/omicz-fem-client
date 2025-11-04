@@ -279,7 +279,7 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
 
     return resolved_cmd
 
-def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_action):
+def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_action, token):
     
     logger = logging.getLogger("receiver")
     execution = json.loads(execution)
@@ -297,7 +297,8 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         "execution_id": execution_id,
         "user_id": user_id,
         "sandbox_path": config.sandbox_path,
-        "data_path": config.data_path
+        "data_path": config.data_path, 
+        "token": token
     }
 
     

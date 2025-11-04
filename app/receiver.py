@@ -54,8 +54,8 @@ def on_request(ch, method, props, body, logger):
         logger.info(f'[.] Received command {components}')
         response_message = {} 
         
-        if len(components) == 4:
-            task_info, execution, user_id, json_action = components
+        if len(components) == 5:
+            task_info, execution, user_id, json_action, token = components
             logger.info(f'[.] Received {json_action} command for execution_id: {execution}, user_id: {user_id}')
 
             result = run_tool(task_info=task_info, 
@@ -63,13 +63,14 @@ def on_request(ch, method, props, body, logger):
                               parametric_args=None,
                               user_id=user_id, 
                               public_ip=None,
-                              json_action=json_action)
+                              json_action=json_action, 
+                              token = token)
             
             response_message = json.loads(result)
             logger.info(f"{json_action} RESPONSE: {response_message}")
  
-        elif len(components) == 7 and components[0] != "None":
-            tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action = components
+        elif len(components) == 8 and components[0] != "None":
+            tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action, token = components
             task_id = {re.search(r"'_id'\s*:\s*'([^']+)'", task_info)}
             #Convert the parametric_args variable into a dictionary
             parametric_args = eval(parametric_args)
@@ -80,7 +81,8 @@ def on_request(ch, method, props, body, logger):
                               parametric_args=parametric_args,
                               user_id=user_id, 
                               public_ip = public_ip,
-                              json_action=json_action)
+                              json_action=json_action,
+                              token = token)
             
             response_message = json.loads(result)
             logger.info(f"RESPONSE: {response_message}")
