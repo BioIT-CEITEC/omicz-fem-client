@@ -196,7 +196,7 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
         cmd = replace_api_placeholders(cmd, json_config, json_action)
 
     # Extract mapping dictionaries from the json_config
-    task_info_vars = json_config.get("task_info_vars", {})
+    task_info_vars = config.task_info_vars
     system_var_handler = json_config.get("system_var_handler", {})
     site_vars = json_config.get("site_vars", {})
 
