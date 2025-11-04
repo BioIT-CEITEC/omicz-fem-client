@@ -300,23 +300,6 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         "data_path": config.data_path
     }
 
-    try: 
-        # Define directories
-        user_folder = os.path.join(os.getenv("SANDBOX_PATH"), user_id)
-        execution_folder = os.path.join(user_folder, execution_id)
-
-        # Check and create directories if they don't exist
-        if not os.path.exists(user_folder):
-            os.makedirs(user_folder)
-
-        if not os.path.exists(execution_folder):
-            os.makedirs(execution_folder)
-            
-    except Exception as e:
-        error_message = f"Execution folder {execution_folder} could not be created: {e}"
-        logger.info(error_message)
-        return error_message 
-       
     
     try:
         logger.info(f"Starting {json_action} command for execution_id: {execution_id}, user_id: {user_id}")
@@ -384,6 +367,58 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
 
     except Exception as e:
         error_message = f"An error occurred while fetching cmd: {e}"
+        logger.info(error_message)
+        return error_message 
+    
+       
+    try:
+        # Check if a sandbox_rule command exists in the JSON
+        sandbox_rule_cmd = json_config.get("sandbox_rule", {}).get("cmd", {})
+
+        if sandbox_rule_cmd:
+            logger.info(f"Found sandbox_rule command, executing to determine SANDBOX_PATH: {sandbox_rule_cmd}")
+
+            sandbox_cmd = resolve_cmd_placeholders(json_config, "sandbox_rule", sandbox_rule_cmd, argument_values, task_info="")
+            new_sandbox = subprocess.run(
+                sandbox_cmd,
+                shell=True,
+                executable="/bin/bash",
+                capture_output=True,
+                text=True
+            )
+
+            if new_sandbox.returncode != 0:
+                raise RuntimeError(
+                    f"sandbox_rule command failed with code {new_sandbox.returncode}: {new_sandbox.stderr.strip()}"
+                )
+
+            sandbox_path = new_sandbox.stdout.strip()
+            logger.info(f"Sandbox rule produced path: {sandbox_path}")
+
+            if not os.path.exists(sandbox_path):
+                raise FileNotFoundError(f"Sandbox path from sandbox_rule does not exist: {sandbox_path}")
+
+        else:
+            # Fallback to using the default SANDBOX_PATH from environment variable
+            sandbox_path = os.getenv("SANDBOX_PATH")
+            logger.info(f"No sandbox_rule found; using default SANDBOX_PATH: {sandbox_path}")
+
+            if not sandbox_path or not os.path.exists(sandbox_path):
+                raise FileNotFoundError(f"Default SANDBOX_PATH not found or invalid: {sandbox_path}")
+
+        # Define directories
+        user_folder = os.path.join(sandbox_path, user_id)
+        execution_folder = os.path.join(user_folder, execution_id)
+
+        # Check and create directories if they don't exist
+        if not os.path.exists(user_folder):
+            os.makedirs(user_folder)
+
+        if not os.path.exists(execution_folder):
+            os.makedirs(execution_folder)
+
+    except Exception as e:
+        error_message = f"Execution folder setup failed: {e}"
         logger.info(error_message)
         return error_message 
     
