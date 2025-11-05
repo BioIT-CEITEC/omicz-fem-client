@@ -371,6 +371,35 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         logger.info(error_message)
         return error_message 
     
+    # Check if a token_rule command exists in the JSON
+    token_rule_cmd = json_config.get("token_rule", {}).get("cmd", {})
+
+    if token_rule_cmd:
+        logger.info(f"Found token_rule command, executing to determine which token to use: {token_rule_cmd}")
+
+        try:
+
+            token_cmd = resolve_cmd_placeholders(json_config, "token_rule", token_rule_cmd, argument_values, task_info="")
+            new_token = subprocess.run(
+                token_cmd,
+                shell=True,
+                executable="/bin/bash",
+                capture_output=True,
+                text=True
+            )
+
+            if new_token.returncode != 0:
+                raise RuntimeError(
+                    f"token_rule command failed with code {new_token.returncode}: {new_token.stderr.strip()}"
+                )
+
+            token = new_token.stdout.strip()
+            logger.info("New token applied")
+
+        except Exception as e:
+            error_message = f"Token rule found but failed to be applied: {e}"
+            logger.info(error_message)
+            return error_message 
        
     try:
         # Check if a sandbox_rule command exists in the JSON
