@@ -265,6 +265,11 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
                 resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(argument_values[placeholder]))
                 continue
 
+            # Try resolving the placeholder from command arguments
+            if placeholder in parametric_args:
+                resolved_cmd = resolved_cmd.replace(f"%%{placeholder}%%", str(parametric_args[placeholder]))
+                continue
+
             # Try resolving the placeholder from environment variables
             env_value = os.environ.get(placeholder)
             if env_value is not None:
