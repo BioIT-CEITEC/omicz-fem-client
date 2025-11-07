@@ -159,24 +159,38 @@ def build_cwl_command(task_command, parametric_args=None):
     return ' '.join(command_parts)
 
 def clean_composed_command(command):
-    # This regex pattern matches flags with optional values and checks for empty values after the '='
-    pattern = r'(--?\w+[-\w]*)(=)([^\s-]*)'  # matches flag=-value (allowing for no value)
-    
-    # Function to process and remove the invalid arguments
-    def replace_invalid_arguments(match):
-        flag, equal_sign, value = match.groups()
-        # If the value is empty (or a flag starts with a '-'), skip this argument
-        if not value or re.match(r"^-\w", value):  
-            return ""  # Remove this argument entirely
-        return match.group(0)  # Return the match as it is if the value is valid
+    # Regex parts:
+    # 1. Match a flag: --key, -key, --key-name
+    # 2. Exclude single short flags like -v (no cleanup for those)
+    # 3. Allow optional spaces and up to two '=' signs
+    # 4. Look ahead to check for:
+    #    - end of string ($)
+    #    - another flag (-- or -<word>)
+    #    - empty quotes ("", '')
+    #    - or just spaces (no value)
+    pattern = r'''
+        (?:(?<=\s)|^)          # start of word (no non-space before)
+        (--?\w[\w-]*)          # flag name (group 1)
+        (?!-\w)                # ensure not something like ---foo (invalid)
+        (?:\s*={0,2}\s*)?      # optional '=', '==', or spaces
+        (?=                    # start of lookahead to decide if to remove
+            ($                 # end of string
+            |--?\w             # another flag follows
+            |["']{2}           # empty quotes "" or ''
+            |\s+["']{2}        # space then empty quotes
+            |\s*(?=$)          # spaces then end
+            )
+        )
+    '''
 
-    # Apply regex replacement to the command
-    cleaned_command = re.sub(pattern, replace_invalid_arguments, command)
-    
-    # Check if the last element is a flag or flag followed by '=' with no value
-    # This pattern checks if the last part is a flag or a flag with '=' but no value after it
-    cleaned_command = re.sub(r'(--?\w+[-\w]*)(=?)(\s*)$', '', cleaned_command)
+    def remove_invalid_flag(match):
+        flag = match.group(1)
+        # Keep single-letter short flags like -v
+        if re.fullmatch(r'-\w', flag):
+            return flag  # keep
+        return ''  # remove invalid flag
 
+    cleaned_command = re.sub(pattern, remove_invalid_flag, command, flags=re.VERBOSE)
     # Clean up extra spaces (if any) after removal of arguments
     cleaned_command = re.sub(r'\s+', ' ', cleaned_command).strip()
     
