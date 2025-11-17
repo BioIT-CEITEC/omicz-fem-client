@@ -413,6 +413,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
                 )
 
             token = new_token.stdout.strip()
+            argument_values['token'] = token
             logger.info("New token applied")
 
         except Exception as e:
