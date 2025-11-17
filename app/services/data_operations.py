@@ -6,8 +6,8 @@ from config import config
 def list_files(user_id, execution_id, path):
     try:
         # Get SANDBOX and DATA base paths from env
-        sandbox_base = os.environ.get("SANDBOX_PATH", "/app/sandbox")
-        data_base = os.environ.get("DATA_PATH", "/app/data")
+        sandbox_base = os.environ.get("SANDBOX_PATH", "/sandbox")
+        data_base = os.environ.get("DATA_PATH", "/data")
 
         path = os.path.normpath(path)
 
@@ -80,7 +80,7 @@ def send_files_as_json(user_id: str, execution_id:str, file: str = None) -> str:
     try:
 
         # Convert file paths to absolute paths
-        sandbox_path = os.environ.get('SANDBOX_PATH', '/app/sandbox')
+        sandbox_path = os.environ.get('SANDBOX_PATH', '/sandbox')
         path = os.path.join(sandbox_path, user_id, execution_id, file)
         logging.info(f"Sending file or folder: {path}")
 
