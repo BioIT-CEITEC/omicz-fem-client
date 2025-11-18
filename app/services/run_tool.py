@@ -200,6 +200,9 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
 
     logger = logging.getLogger("receiver")
 
+    argument_values = argument_values or {}
+    parametric_args = parametric_args or {}
+
     # Ensure cmd is always a string
     if isinstance(cmd, list):
         cmd = "\n".join(cmd)
