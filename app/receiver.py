@@ -2,7 +2,6 @@
 import pika
 import json
 import os
-import time
 import ssl
 import logging
 from services.check_resources import *
@@ -11,6 +10,17 @@ from services.data_operations import *
 from services.utils import *
 from config import config
 from dotenv import load_dotenv
+import threading
+import time
+from threading import Lock
+
+# Execution sandbox map: execution_id -> (sandbox_path, expiry_timestamp)
+execution_sandboxes = {}
+execution_sandboxes_lock = Lock()
+
+# How long to keep a sandbox mapping after last set (seconds).
+# Set to whatever makes sense; e.g. 3600 = 1 hour
+EXECUTION_SANDBOX_TTL = 300
 
 #read the .env file and load the variables
 load_dotenv()
@@ -42,6 +52,46 @@ def setup_logger():
 
     return logger
 
+# Functions to store DYNAMIC SANDBOX in the env during executions:
+def set_execution_sandbox(execution_id: str, sandbox_path: str, ttl: int = EXECUTION_SANDBOX_TTL):
+    """Store sandbox for an execution id with expiry."""
+    expiry = time.time() + ttl
+    with execution_sandboxes_lock:
+        execution_sandboxes[str(execution_id)] = (sandbox_path, expiry)
+
+def get_execution_sandbox(execution_id: str):
+    """Return sandbox_path for execution_id or None if not set/expired."""
+    key = str(execution_id)
+    with execution_sandboxes_lock:
+        entry = execution_sandboxes.get(key)
+        if not entry:
+            return None
+        sandbox_path, expiry = entry
+        if time.time() > expiry:
+            # expired: remove and return None
+            del execution_sandboxes[key]
+            return None
+        return sandbox_path
+
+def clear_execution_sandbox(execution_id: str):
+    """Remove mapping immediately."""
+    with execution_sandboxes_lock:
+        execution_sandboxes.pop(str(execution_id), None)
+
+def _execution_sandbox_cleanup_worker():
+    """Daemon thread to remove expired entries periodically."""
+    while True:
+        now = time.time()
+        with execution_sandboxes_lock:
+            expired = [k for k, (_, exp) in execution_sandboxes.items() if exp < now]
+            for k in expired:
+                del execution_sandboxes[k]
+        time.sleep(60)  # check every minute
+
+# start background thread once
+cleanup_thread = threading.Thread(target=_execution_sandbox_cleanup_worker, daemon=True)
+cleanup_thread.start()
+
 # Function to handle incoming requests
 def on_request(ch, method, props, body, logger):
     logger.info("[.] Received a message")
@@ -68,6 +118,12 @@ def on_request(ch, method, props, body, logger):
             
             response_message = json.loads(result)
             logger.info(f"{json_action} RESPONSE: {response_message}")
+
+            # Chunk to reset sandbox to default value after an execution.
+            if json_action == "cancel_run":
+                execution = json.loads(execution)
+                execution_id = execution.get('execution_id')
+                clear_execution_sandbox(execution_id)
  
         elif len(components) == 8 and components[0] != "None":
             tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action, token = components
@@ -84,27 +140,47 @@ def on_request(ch, method, props, body, logger):
                               json_action=json_action,
                               token = token)
             
-            response_message = json.loads(result)
+            # New logic to save dynamic $SANDBOX_PATH to execution env
+            try:
+                result_obj = json.loads(result)
+            except Exception:
+                logger.exception("run_tool did not return valid JSON")
+                result_obj = {"status": "error", "raw_result": result}
+
+            # If submit_run provided a sandbox_path, store it for the execution
+            if json_action == "submit_run" and isinstance(result_obj, dict):
+                sandbox_path = result_obj.get("sandbox_path")
+                if sandbox_path:
+                    logger.info(f"Storing sandbox for execution {execution}: {sandbox_path}")
+                    set_execution_sandbox(execution, sandbox_path)
+
+            response_message = result_obj
             logger.info(f"RESPONSE: {response_message}")
  
         elif components[0] == "list_files":
             user_id, execution_id, path = components[1:4]
+            sandbox_base = get_execution_sandbox(execution_id) or os.environ.get("SANDBOX_PATH", "/sandbox")
+
             logger.info(f'[.] Received list_files command for path: {path}')
 
             response_message = list_files(user_id=user_id,
                                 execution_id=execution_id,
-                                path=path)
+                                path=path,
+                                sandbox_base = sandbox_base)
             
             #response_message = json.loads(result)
             logger.info(f"list_files RESPONSE: {response_message}")
 
         elif components[0] == "send_files":
             user_id, execution_id, file = components[1:4]
+            sandbox_base = get_execution_sandbox(execution_id) or os.environ.get("SANDBOX_PATH", "/sandbox")
+
             logger.info(f'[.] Received send_files command for execution_id: {execution_id}')
 
             response_message = send_files_as_json(user_id = user_id, 
                                                   execution_id = execution_id, 
-                                                  file = file)
+                                                  file = file,
+                                                  sandbox_base = sandbox_base)
             
             logger.info(f"list_files RESPONSE: {response_message}")
 

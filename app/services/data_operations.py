@@ -3,10 +3,9 @@ import logging
 import base64
 from config import config
 
-def list_files(user_id, execution_id, path):
+def list_files(user_id, execution_id, path, sandbox_base):
     try:
-        # Get SANDBOX and DATA base paths from env
-        sandbox_base = os.environ.get("SANDBOX_PATH", "/sandbox")
+        # Get DATA base paths from env
         data_base = os.environ.get("DATA_PATH", "/data")
 
         path = os.path.normpath(path)
@@ -59,7 +58,7 @@ def list_files(user_id, execution_id, path):
         print(f"Error: {e}")
         return {"Error": str(e)}
     
-def send_files_as_json(user_id: str, execution_id:str, file: str = None) -> str:
+def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: str = None) -> str:
     """
     Prepares a file or all files in a folder (recursively) as a JSON string
     suitable for sending via RabbitMQ. Includes base64-encoded file content and
@@ -80,7 +79,7 @@ def send_files_as_json(user_id: str, execution_id:str, file: str = None) -> str:
     try:
 
         # Convert file paths to absolute paths
-        sandbox_path = os.environ.get('SANDBOX_PATH', '/sandbox')
+        sandbox_path = sandbox_base
         path = os.path.join(sandbox_path, user_id, execution_id, file)
         logging.info(f"Sending file or folder: {path}")
 
