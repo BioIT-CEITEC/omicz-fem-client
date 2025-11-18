@@ -318,7 +318,8 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         "task_id": task_id,
         "execution_id": execution_id,
         "user_id": user_id,
-        "sandbox_path": config.sandbox_path,
+        "sandbox_host": config.sandbox_path,
+        "sandbox_fem": os.getenv("SANDBOX_PATH"),
         "data_path": config.data_path, 
         "token": token
     }
@@ -446,6 +447,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
                 )
 
             sandbox_path = new_sandbox.stdout.strip()
+            argument_values['sandbox_fem'] = sandbox_path
             logger.info(f"Sandbox rule produced path: {sandbox_path}")
 
             if not os.path.exists(sandbox_path):
