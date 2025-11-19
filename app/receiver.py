@@ -103,8 +103,8 @@ def on_request(ch, method, props, body, logger):
         logger.info(f'[.] Received command {components}')
         response_message = {} 
         
-        if len(components) == 5:
-            task_info, execution, user_id, json_action, token = components
+        if components[0] == "other_tasks":
+            task_info, execution, user_id, json_action, token = components[1:6]
             logger.info(f'[.] Received {json_action} command for execution_id: {execution}, user_id: {user_id}')
 
             result, sandbox_path = run_tool(task_info=task_info, 
@@ -124,8 +124,8 @@ def on_request(ch, method, props, body, logger):
                 execution_id = execution.get('execution_id')
                 clear_execution_sandbox(execution_id)
  
-        elif len(components) == 8 and components[0] != "None":
-            tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action, token = components
+        elif components[0] == "submit_run":
+            tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action, token = components[1:9]
             task_id = {re.search(r"'_id'\s*:\s*'([^']+)'", task_info)}
             #Convert the parametric_args variable into a dictionary
             parametric_args = eval(parametric_args)
