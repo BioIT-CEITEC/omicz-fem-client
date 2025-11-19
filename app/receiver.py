@@ -170,8 +170,7 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"list_files RESPONSE: {response_message}")
 
         elif components[0] == "send_files":
-            user_id, execution_id, file = components[1:4]
-            sandbox_base = get_execution_sandbox(execution_id) or os.environ.get("SANDBOX_PATH", "/sandbox")
+            user_id, execution_id, file, sandbox_base = components[1:5]
 
             logger.info(f'[.] Received send_files command for execution_id: {execution_id}')
 
