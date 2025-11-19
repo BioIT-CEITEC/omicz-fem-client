@@ -107,7 +107,7 @@ def on_request(ch, method, props, body, logger):
             task_info, execution, user_id, json_action, token = components
             logger.info(f'[.] Received {json_action} command for execution_id: {execution}, user_id: {user_id}')
 
-            result = run_tool(task_info=task_info, 
+            result, sandbox_path = run_tool(task_info=task_info, 
                               execution=execution, 
                               parametric_args=None,
                               user_id=user_id, 
@@ -131,7 +131,7 @@ def on_request(ch, method, props, body, logger):
             parametric_args = eval(parametric_args)
             logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, user_id: {user_id}')
 
-            result = run_tool(task_info=task_info, 
+            result, sandbox_path = run_tool(task_info=task_info, 
                               execution=execution, 
                               parametric_args=parametric_args,
                               user_id=user_id, 
