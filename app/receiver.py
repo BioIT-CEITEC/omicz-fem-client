@@ -179,7 +179,7 @@ def on_request(ch, method, props, body, logger):
                                                   file = file,
                                                   sandbox_base = sandbox_base)
             
-            logger.info(f"list_files RESPONSE: {response_message}")
+            logger.info(f"send_files RESPONSE: {response_message}")
 
         else:
             logger.error(f"Invalid body format. Expected 3 or 4 components separated by colons, but received: {body_str}")
