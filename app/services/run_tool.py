@@ -487,7 +487,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         response = process.stdout.decode().strip()
         logger.info(f"Command executed successfully: {response}")
             
-        return response
+        return response, sandbox_path
 
     except Exception as e:
         error_message = f"An error occurred trying to resolve the cmd: {e}"
