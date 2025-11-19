@@ -61,22 +61,21 @@ def set_execution_sandbox(execution_id: str, sandbox_path: str, ttl: int = EXECU
 
 def get_execution_sandbox(execution_id: str):
     """Return sandbox_path for execution_id or None if not set/expired."""
-    key = str(execution_id)
     with execution_sandboxes_lock:
-        entry = execution_sandboxes.get(key)
+        entry = execution_sandboxes.get(execution_id)
         if not entry:
             return None
         sandbox_path, expiry = entry
         if time.time() > expiry:
-            # expired: remove and return None
-            del execution_sandboxes[key]
+            # expired → remove
+            del execution_sandboxes[execution_id]
             return None
         return sandbox_path
 
 def clear_execution_sandbox(execution_id: str):
-    """Remove mapping immediately."""
+    """Remove mapping for an execution_id immediately."""
     with execution_sandboxes_lock:
-        execution_sandboxes.pop(str(execution_id), None)
+        execution_sandboxes.pop(execution_id, None)
 
 def _execution_sandbox_cleanup_worker():
     """Daemon thread to remove expired entries periodically."""
@@ -142,19 +141,18 @@ def on_request(ch, method, props, body, logger):
             
             # New logic to save dynamic $SANDBOX_PATH to execution env
             try:
-                result_obj = json.loads(result)
+                response_message = json.loads(result)
             except Exception:
                 logger.exception("run_tool did not return valid JSON")
-                result_obj = {"status": "error", "raw_result": result}
+                result = {"status": "error", "raw_result": result}
 
             # If submit_run provided a sandbox_path, store it for the execution
-            if json_action == "submit_run" and isinstance(result_obj, dict):
-                sandbox_path = result_obj.get("sandbox_path")
-                if sandbox_path:
-                    logger.info(f"Storing sandbox for execution {execution}: {sandbox_path}")
-                    set_execution_sandbox(execution, sandbox_path)
+            if json_action == "submit_run" and sandbox_path:
+                logger.info(f"Storing sandbox for execution {execution}: {sandbox_path}")
+                execution = json.loads(execution)
+                execution_id = execution.get('execution_id')
+                set_execution_sandbox(execution_id, sandbox_path)
 
-            response_message = result_obj
             logger.info(f"RESPONSE: {response_message}")
  
         elif components[0] == "list_files":
