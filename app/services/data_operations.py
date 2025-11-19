@@ -52,6 +52,7 @@ def list_files(user_id, execution_id, path, sandbox_base):
                         del d[k]
 
         cleanup(tree)
+        tree["sandbox_base"] = sandbox_base
         return tree
 
     except Exception as e:
