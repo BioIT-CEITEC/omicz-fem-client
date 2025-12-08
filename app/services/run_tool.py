@@ -345,7 +345,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     try: 
 
         # Use either task_info or execution object depending on the received components:
-        if json_action == "submit_run":
+        if json_action == "submit_run" or "health-check" in task_id:
 
             # Resolve command to print available docker images
             images_cmd=json_config.get("print_images", {}).get("cmd", {})
