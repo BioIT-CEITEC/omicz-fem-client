@@ -168,7 +168,7 @@ def pre_checks(images_cmd, public_ip=None):
     # Log the summary for reference
     #logging.info("RESPONSE:\n%s", result_summary)
 
-    return json.dumps(results)
+    return json.dumps(results), None
 
 
 
