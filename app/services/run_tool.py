@@ -159,41 +159,30 @@ def build_cwl_command(task_command, parametric_args=None):
     return ' '.join(command_parts)
 
 def clean_composed_command(command):
-    # Regex parts:
-    # 1. Match a flag: --key, -key, --key-name
-    # 2. Exclude single short flags like -v (no cleanup for those)
-    # 3. Allow optional spaces and up to two '=' signs
-    # 4. Look ahead to check for:
-    #    - end of string ($)
-    #    - another flag (-- or -<word>)
-    #    - empty quotes ("", '')
-    #    - or just spaces (no value)
-    pattern = r'''
-        (?:(?<=\s)|^)          # start of word (no non-space before)
-        (--?\w[\w-]*)          # flag name (group 1)
-        (?!-\w)                # ensure not something like ---foo (invalid)
-        (?:\s*={0,2}\s*)?      # optional '=', '==', or spaces
-        (?=                    # start of lookahead to decide if to remove
-            ($                 # end of string
-            |--?\w             # another flag follows
-            |["']{2}           # empty quotes "" or ''
-            |\s+["']{2}        # space then empty quotes
-            |\s*(?=$)          # spaces then end
-            )
-        )
-    '''
+    """
+    Cleans a command string by removing flags that have '=' or '=='
+    with no value, empty quotes, or a single '-'.
+    Preserves all other flags, including single-letter flags and
+    flags followed by space and a value.
+    Returns a single-line command.
+    """
 
-    def remove_invalid_flag(match):
-        flag = match.group(1)
-        # Keep single-letter short flags like -v
-        if re.fullmatch(r'-\w', flag):
-            return flag  # keep
-        return ''  # remove invalid flag
+    # Pattern explanation:
+    # 1. (--?\w[\w-]*)      => flag (single or double dash)
+    # 2. (={1,2})            => = or ==
+    # 3. (?:
+    #       (["']{2}|-)      => empty quotes "" or '' or just -
+    #       |                 => OR
+    #       (?=\s|$|--)       => nothing follows (end, whitespace, or next flag)
+    #    )
+    pattern = r'(--?\w[\w-]*)(={1,2})(?:(["\']{2}|-)|(?=\s|$|--))'
 
-    cleaned_command = re.sub(pattern, remove_invalid_flag, command, flags=re.VERBOSE)
-    # Clean up extra spaces (if any) after removal of arguments
+    # Remove the invalid flags
+    cleaned_command = re.sub(pattern, '', command)
+
+    # Collapse all whitespace (spaces, tabs, newlines) into a single space
     cleaned_command = re.sub(r'\s+', ' ', cleaned_command).strip()
-    
+
     return cleaned_command
 
 def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None, task_info=None, parametric_args=None): 
