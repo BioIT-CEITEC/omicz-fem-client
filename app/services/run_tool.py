@@ -342,11 +342,13 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
             #It won't need task_info or dinamic variables, since it's a system command
             images_cmd = resolve_cmd_placeholders(json_config, "print_images", images_cmd, argument_values, task_info="")
 
-            pre_checks_result, none_obj = pre_checks(public_ip=public_ip,
+            pre_checks_result = pre_checks(public_ip=public_ip,
                                            images_cmd=images_cmd)
-        
+
+            none_obj = None # empty object to return 2 things, as expected
+
             if "health-check" in task_id:
-                return pre_checks_result
+                return pre_checks_result, none_obj
         else: 
             #If there's no task/tool info provided, use the execution object
             # Extract process_info list from the execution
