@@ -13,6 +13,70 @@ from dotenv import load_dotenv
 import threading
 import time
 from threading import Lock
+import hashlib
+import math
+import base64
+
+CHUNK_SIZE = 120000
+
+def compute_checksum(binary_data):
+    return hashlib.sha256(binary_data).hexdigest()
+
+def chunk_generator(data_bytes, chunk_size=CHUNK_SIZE):
+    """
+    Yield base64-encoded chunks from raw bytes.
+    Used by send_response for non-file messages.
+    """
+    import base64
+    for i in range(0, len(data_bytes), 3 * (chunk_size // 4)):
+        chunk = data_bytes[i:i + 3 * (chunk_size // 4)]
+        yield base64.b64encode(chunk).decode("utf-8")
+
+
+def send_response(ch, routing_key, correlation_id, response_bytes, logger):
+    """
+    Streams response_bytes in chunks progressively to RabbitMQ.
+    Total chunks calculated without pre-encoding entire response.
+    """
+    checksum = compute_checksum(response_bytes)
+    total_bytes = len(response_bytes)
+
+    # Compute total_chunks from bytes length
+    encoded_length = 4 * math.ceil(total_bytes / 3)
+    total_chunks = max(1, math.ceil(encoded_length / CHUNK_SIZE))
+
+    # Send chunk_start first
+    ch.basic_publish(
+        exchange='',
+        routing_key=routing_key,
+        properties=pika.BasicProperties(correlation_id=correlation_id),
+        body=json.dumps({
+            "type": "chunk_start",
+            "total": total_chunks,
+            "checksum": checksum
+        }).encode()
+    )
+    logger.info(f"[.] Sent chunk_start for {total_chunks} chunks")
+
+    # Stream chunks
+    for i, chunk in enumerate(chunk_generator(response_bytes)):
+        ch.basic_publish(
+            exchange='',
+            routing_key=routing_key,
+            properties=pika.BasicProperties(correlation_id=correlation_id),
+            body=json.dumps({
+                "type": "chunk",
+                "index": i,
+                "data": chunk
+            }).encode()
+        )
+        logger.info(f"[.] Sent chunk {i+1}/{total_chunks}")
+
+        # Flush immediately
+        if hasattr(ch.connection, "process_data_events"):
+            ch.connection.process_data_events()
+
+
 
 # Execution sandbox map: execution_id -> (sandbox_path, expiry_timestamp)
 execution_sandboxes = {}
@@ -96,13 +160,75 @@ def on_request(ch, method, props, body, logger):
     logger.info("[.] Received a message")
 
     try:
-        # Extracting components from the body
-        body_str = body.decode('utf-8')
-        components = body_str.split('|')
-        components = [None if (isinstance(c, str) and c.strip("'\"") == "None") else c for c in components]
-        logger.info(f'[.] Received command {components}')
-        response_message = {} 
-        
+        try:
+            packet = json.loads(body.decode('utf-8'))
+        except Exception:
+            packet = None
+
+        if packet and packet.get("type") == "chunk_start":
+            # Initialize chunk reception
+            logger.info("[.] Start of incoming chunked command")
+            ch._chunks = {}
+            ch._total_chunks = packet["total"]
+            ch._checksum = packet["checksum"]
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+        if packet and packet.get("type") == "chunk":
+            if not hasattr(ch, "_chunks"):
+                logger.warning("Chunk received without chunk_start, initializing anyway")
+                ch._chunks = {}
+                ch._total_chunks = packet.get("total", 0)
+                ch._checksum = packet.get("checksum", None)
+
+            # Store chunk
+            idx = packet["index"]
+            ch._chunks[idx] = packet["data"]
+
+            if len(ch._chunks) < ch._total_chunks:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+
+            # Reassemble all chunks
+            logger.info("[.] All chunks received, reassembling command")
+            full_b64 = "".join(ch._chunks[i] for i in sorted(ch._chunks))
+            binary = base64.b64decode(full_b64)
+
+            if compute_checksum(binary) != ch._checksum:
+                logger.error("Checksum mismatch in command")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+
+            body_bytes = binary
+
+        else:
+            # Fallback for non-chunked (small) messages
+            body_bytes = body
+
+        # --- Convert bytes to string for orchestrator → client commands ---
+        try:
+            body_str = body_bytes.decode('utf-8')
+        except Exception:
+            body_str = None  # keep as bytes if not UTF-8
+
+        components = []
+
+        if body_str is not None:
+            # Always split string commands
+            if "|" in body_str:
+                parts = body_str.split("|")
+
+                # Convert literal `"None"` into real Python None
+                components = [None if (isinstance(p, str) and p.strip("'\"") == "None") else p for p in parts]
+                logger.info(f"[.] Received command: {components}")
+            else:
+                components = [body_str]  # single command without "|"
+        else:
+            # Not UTF-8 → keep as bytes
+            components = [body_bytes]
+
+        response_message = {}
+
         if components[0] == "other_tasks":
             task_info, execution, user_id, json_action, token = components[1:6]
             logger.info(f'[.] Received {json_action} command for execution_id: {execution}, user_id: {user_id}')
@@ -178,20 +304,20 @@ def on_request(ch, method, props, body, logger):
                                                   execution_id = execution_id, 
                                                   file = file,
                                                   sandbox_base = sandbox_base)
-            
+
             logger.info(f"send_files RESPONSE: {response_message}")
+
 
         else:
             logger.error(f"Invalid body format. Expected 3 or 4 components separated by colons, but received: {body_str}")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        response_body = json.dumps(response_message)
-        ch.basic_publish(
-            exchange='',
-            routing_key=props.reply_to,
-            properties=pika.BasicProperties(correlation_id=props.correlation_id),
-            body=response_body.encode('utf-8')
-        )
+        # Send response message back, chunked if necessary:
+        response_bytes = json.dumps(response_message).encode('utf-8')
+        send_response(ch, props.reply_to, props.correlation_id, response_bytes, logger)
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
         logger.info("[.] Done processing request")
 
     except Exception as ex:
@@ -199,7 +325,6 @@ def on_request(ch, method, props, body, logger):
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     finally:
-        ch.basic_ack(delivery_tag=method.delivery_tag)
         logger.info("[.] Awaiting for requests")
 
 
@@ -227,6 +352,9 @@ def run_receiver():
         logger.info(f"[.] RabbitMQ params: {params}")
         connection = pika.BlockingConnection(params)
         channel = connection.channel()
+        # Enable publisher confirms
+        channel.confirm_delivery()
+
         channel.queue_declare(queue=config.node_name)
 
         channel.basic_qos(prefetch_count=1)
