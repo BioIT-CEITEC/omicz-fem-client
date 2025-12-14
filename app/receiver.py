@@ -308,6 +308,20 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"send_files RESPONSE: {response_message}")
 
 
+        elif components[0] == "receive_files":
+            user_id, execution_id, incoming_files = components[1:4]
+            sandbox_base = get_execution_sandbox(execution_id) or os.environ.get("SANDBOX_PATH", "/sandbox")
+
+            logger.info(f'[.] Received receive_files command for execution_id: {execution_id}')
+
+            response_message = receive_files(user_id = user_id,
+                                              execution_id = execution_id,
+                                              incoming_files = incoming_files,
+                                              sandbox_base = sandbox_base)
+
+            logger.info(f"receive_files RESPONSE: {response_message}")
+
+
         else:
             logger.error(f"Invalid body format. Expected 3 or 4 components separated by colons, but received: {body_str}")
             ch.basic_ack(delivery_tag=method.delivery_tag)

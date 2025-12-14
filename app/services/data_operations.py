@@ -2,6 +2,7 @@ import os
 import logging
 import base64
 from config import config
+import json
 
 def list_files(user_id, execution_id, path, sandbox_base):
     try:
@@ -123,3 +124,60 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
     except Exception as e:
         print(f"Error: {e}")
         return {"Error": str(e)}
+
+
+def receive_files(user_id: str, execution_id:str, sandbox_base:str, incoming_files:list) -> dict:
+    """
+    Receives base64-encoded files and stores them on disk.
+    Expected format:
+        - list of files: [{"relative_path": ..., "content_b64": ...}, ...]
+    """
+
+    if isinstance(incoming_files, str):
+        incoming_files = json.loads(incoming_files)
+
+    dest_dir = os.path.join(sandbox_base, user_id, execution_id)
+
+    try:
+        # Build destination directory
+        logging.info(f"Storing received file in: {dest_dir}")
+
+        # Create directory if it doesn't exist
+        os.makedirs(dest_dir, exist_ok=True)
+
+    except Exception as e:
+        logging.error(f"Could not create directory {dest_dir}: {e}")
+        return {"Error": str(e)}
+
+    stored_files = []
+
+    # Process each file entry
+    for file_entry in incoming_files:
+        try:
+            file_name = file_entry.get("relative_path")
+            content_b64 = file_entry.get("content_b64")
+
+            if not file_name or not content_b64:
+                raise ValueError("Missing 'relative_path' or 'content_b64' in a file entry")
+
+            # Compute full storage path
+            dest_path = os.path.join(dest_dir, file_name)
+
+            # Decode Base64
+            file_bytes = base64.b64decode(content_b64)
+
+            # Write file to disk
+            with open(dest_path, "wb") as f:
+                f.write(file_bytes)
+
+            logging.info(f"Stored file: {dest_path}")
+            stored_files.append(dest_path)
+
+        except Exception as e:
+            logging.error(f"Error storing file {file_entry}: {e}")
+            stored_files.append({"file_name": file_entry.get("file_name"), "Error": str(e)})
+
+    return {
+        "status": "success",
+        "files_stored": stored_files
+    }
