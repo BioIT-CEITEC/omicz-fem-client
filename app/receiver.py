@@ -244,12 +244,6 @@ def on_request(ch, method, props, body, logger):
             response_message = json.loads(result)
             logger.info(f"{json_action} RESPONSE: {response_message}")
 
-            # Chunk to reset sandbox to default value after an execution.
-            if json_action == "cancel_run":
-                execution = json.loads(execution)
-                execution_id = execution.get('execution_id')
-                clear_execution_sandbox(execution_id)
- 
         elif components[0] == "submit_run":
             tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action, token = components[1:9]
             task_id = {re.search(r"'_id'\s*:\s*'([^']+)'", task_info)}
