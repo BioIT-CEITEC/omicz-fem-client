@@ -163,7 +163,7 @@ If the process fails during the 'docker build', there is an option to download t
 1. Download the image from the docker registry. The credentials to log in are the same username and password used to access GitLab.
 ```
 docker login gitlab.bsc.es
-docker pull registry.gitlab.bsc.es/fl/fem-client:v2
+docker pull registry.gitlab.bsc.es/fl/fem-client:{version}
 docker logout #optional, if you don't want to keep logged in in this machine
 ```
 2. Once the download is finished, check that docker can find ir with the following command:
