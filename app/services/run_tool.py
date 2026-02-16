@@ -8,6 +8,7 @@ from .data_operations import *
 from .check_resources import *
 from config import config
 import ast
+from services.check_resources import check_gpu
 
 def replace_api_placeholders(cmd, config_json, json_action):
     """
@@ -334,22 +335,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     try: 
 
         # Use either task_info or execution object depending on the received components:
-        if json_action == "submit_run" or "health-check" in task_id:
-
-            # Resolve command to print available docker images
-            images_cmd=json_config.get("print_images", {}).get("cmd", {})
-
-            #It won't need task_info or dinamic variables, since it's a system command
-            images_cmd = resolve_cmd_placeholders(json_config, "print_images", images_cmd, argument_values, task_info="")
-
-            pre_checks_result = pre_checks(public_ip=public_ip,
-                                           images_cmd=images_cmd)
-
-            none_obj = None # empty object to return 2 things, as expected
-
-            if "health-check" in task_id:
-                return pre_checks_result, none_obj
-        else: 
+        if not (json_action == "submit_run" or "health-check" in task_id):
             #If there's no task/tool info provided, use the execution object
             # Extract process_info list from the execution
             process_info_list = execution.get("process_info", [])
@@ -367,8 +353,8 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         # Extract command and arguments from the JSON
         # Take into account wheter or not GPUs were detected:
         if json_action == "submit_run":
-            pre_checks_result=json.loads(pre_checks_result)
-            if pre_checks_result.get('gpu_check', {}).get('gpu_detected') == True:
+            gpu_check = check_gpu()
+            if gpu_check.get('gpu_detected', False):
                 cmd = json_config.get(str(json_action), {}).get("cmd_gpu", {})
             else: 
                 cmd = json_config.get(str(json_action), {}).get("cmd", {})
@@ -467,6 +453,20 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         error_message = f"Execution folder setup failed: {e}"
         logger.info(error_message)
         return error_message 
+    
+    if "health-check" in task_id:
+        # Resolve command to print available docker images
+        images_cmd=json_config.get("print_images", {}).get("cmd", {})
+
+        #It won't need task_info or dinamic variables, since it's a system command
+        images_cmd = resolve_cmd_placeholders(json_config, "print_images", images_cmd, argument_values, task_info="")
+
+        pre_checks_result = pre_checks(public_ip=public_ip,
+                                        images_cmd=images_cmd)
+
+        none_obj = None # empty object to return 2 things, as expected
+
+        return pre_checks_result, none_obj
     
     try:
 
