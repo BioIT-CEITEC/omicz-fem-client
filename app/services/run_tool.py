@@ -330,7 +330,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     except Exception as e:
         error_message = f"An error occurred while loading the json file: {e}"
         logger.info(error_message)
-        return error_message 
+        return error_message, None
 
     try: 
 
@@ -363,13 +363,13 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         if not cmd:
             error_message = "Command to run is not defined in the JSON configuration"
             logging.info(error_message)
-            return error_message
+            return error_message, None
         
 
     except Exception as e:
         error_message = f"An error occurred while fetching cmd: {e}"
         logger.info(error_message)
-        return error_message 
+        return error_message, None
     
     # Check if a token_rule command exists in the JSON
     token_rule_cmd = json_config.get("token_rule", {}).get("cmd", {})
@@ -400,7 +400,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         except Exception as e:
             error_message = f"Token rule found but failed to be applied: {e}"
             logger.info(error_message)
-            return error_message 
+            return error_message, None
        
     try:
         # Check if a sandbox_rule command exists in the JSON
@@ -452,7 +452,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     except Exception as e:
         error_message = f"Execution folder setup failed: {e}"
         logger.info(error_message)
-        return error_message 
+        return error_message, None
     
     if "health-check" in task_id:
         # Resolve command to print available docker images
@@ -483,4 +483,4 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     except Exception as e:
         error_message = f"An error occurred trying to resolve the cmd: {e}"
         logger.info(error_message)
-        return error_message
+        return error_message, None
