@@ -16,6 +16,7 @@ from threading import Lock
 import hashlib
 import math
 import base64
+import ast
 
 CHUNK_SIZE = 120000
 
@@ -246,7 +247,10 @@ def on_request(ch, method, props, body, logger):
 
         elif components[0] == "submit_run":
             tool_id, task_info, execution, parametric_args, user_id, public_ip, json_action, token = components[1:9]
-            task_id = {re.search(r"'_id'\s*:\s*'([^']+)'", task_info)}
+
+            # Retrieve task_id from task_info dict
+            task_info_dict = ast.literal_eval(task_info)
+            task_id = task_info_dict.get("_id")
             #Convert the parametric_args variable into a dictionary
             parametric_args = eval(parametric_args)
             logger.info(f'[.] Received {json_action} command for tool_id: {tool_id}, task_id: {task_id}, user_id: {user_id}')
