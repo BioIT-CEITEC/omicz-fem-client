@@ -349,25 +349,9 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         if not task_info:
             raise ValueError("Not task_info or execution_info downloaded from DDBB")
         logger.info(f"Task info correctly fetched for {json_action}")
-
-        # Extract command and arguments from the JSON
-        # Take into account wheter or not GPUs were detected:
-        if json_action == "submit_run":
-            gpu_check = check_gpu()
-            if gpu_check.get('gpu_detected', False):
-                cmd = json_config.get(str(json_action), {}).get("cmd_gpu", {})
-            else: 
-                cmd = json_config.get(str(json_action), {}).get("cmd", {})
-        else:
-                cmd = json_config.get(str(json_action), {}).get("cmd", {})
-        if not cmd:
-            error_message = "Command to run is not defined in the JSON configuration"
-            logging.info(error_message)
-            return error_message, None
         
-
     except Exception as e:
-        error_message = f"An error occurred while fetching cmd: {e}"
+        error_message = f"An error occurred while fetching task_info: {e}"
         logger.info(error_message)
         return error_message, None
     
@@ -467,6 +451,21 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         none_obj = None # empty object to return 2 things, as expected
 
         return pre_checks_result, none_obj
+    
+    # Extract command and arguments from the JSON
+    # Take into account wheter or not GPUs were detected:
+    if json_action == "submit_run":
+        gpu_check = check_gpu()
+        if gpu_check.get('gpu_detected', False):
+            cmd = json_config.get(str(json_action), {}).get("cmd_gpu", {})
+        else: 
+            cmd = json_config.get(str(json_action), {}).get("cmd", {})
+    else:
+            cmd = json_config.get(str(json_action), {}).get("cmd", {})
+    if not cmd:
+        error_message = "Command to run is not defined in the JSON configuration"
+        logging.info(error_message)
+        return error_message, None
     
     try:
 
