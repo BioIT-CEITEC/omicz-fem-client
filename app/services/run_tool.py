@@ -407,23 +407,23 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
                     f"sandbox_rule command failed with code {new_sandbox.returncode}: {new_sandbox.stderr.strip()}"
                 )
 
-            sandbox_path = new_sandbox.stdout.strip()
-            argument_values['sandbox_fem'] = sandbox_path
-            logger.info(f"Sandbox rule produced path: {sandbox_path}")
+            sandbox_fem = new_sandbox.stdout.strip()
+            argument_values['sandbox_fem'] = sandbox_fem
+            logger.info(f"Sandbox rule produced path: {sandbox_fem}")
 
-            if not os.path.exists(sandbox_path):
-                raise FileNotFoundError(f"Sandbox path from sandbox_rule does not exist: {sandbox_path}")
+            if not os.path.exists(sandbox_fem):
+                raise FileNotFoundError(f"Sandbox path from sandbox_rule does not exist: {sandbox_fem}")
 
         else:
             # Fallback to using the default SANDBOX_PATH from environment variable
-            sandbox_path = os.getenv("SANDBOX_PATH")
-            logger.info(f"No sandbox_rule found; using default SANDBOX_PATH: {sandbox_path}")
+            sandbox_fem = os.getenv("SANDBOX_PATH")
+            logger.info(f"No sandbox_rule found; using default SANDBOX_PATH: {sandbox_fem}")
 
-            if not sandbox_path or not os.path.exists(sandbox_path):
-                raise FileNotFoundError(f"Default SANDBOX_PATH not found or invalid: {sandbox_path}")
+            if not sandbox_fem or not os.path.exists(sandbox_fem):
+                raise FileNotFoundError(f"Default SANDBOX_PATH not found or invalid: {sandbox_fem}")
 
         # Define directories
-        user_folder = os.path.join(sandbox_path, user_id)
+        user_folder = os.path.join(sandbox_fem, user_id)
         execution_folder = os.path.join(user_folder, execution_id)
 
         # Check and create directories if they don't exist
@@ -477,7 +477,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         response = process.stdout.decode().strip()
         logger.info(f"Command executed successfully: {response}")
             
-        return response, sandbox_path
+        return response, sandbox_fem
 
     except Exception as e:
         error_message = f"An error occurred trying to resolve the cmd: {e}"
