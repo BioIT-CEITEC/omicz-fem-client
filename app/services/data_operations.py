@@ -117,7 +117,7 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
             })
 
         return {
-            "base_dir": os.path.basename(base_dir),
+            "base_dir": sandbox_path,
             "files": files_payload
         }
     
