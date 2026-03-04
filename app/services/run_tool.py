@@ -310,6 +310,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         "user_id": user_id,
         "sandbox_host": config.sandbox_path,
         "sandbox_fem": os.getenv("SANDBOX_PATH"),
+        "sandbox_execution": "",
         "data_path": config.data_path, 
         "token": token
     }
@@ -425,6 +426,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         # Define directories
         user_folder = os.path.join(sandbox_fem, user_id)
         execution_folder = os.path.join(user_folder, execution_id)
+        argument_values['sandbox_execution'] = execution_folder
 
         # Check and create directories if they don't exist
         if not os.path.exists(user_folder):
