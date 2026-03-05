@@ -308,14 +308,12 @@ def on_request(ch, method, props, body, logger):
 
         elif components[0] == "receive_files":
             user_id, execution_id, incoming_files = components[1:4]
-            sandbox_base = get_execution_sandbox(execution_id) or os.environ.get("SANDBOX_PATH", "/sandbox")
 
             logger.info(f'[.] Received receive_files command for execution_id: {execution_id}')
 
             response_message = receive_files(user_id = user_id,
                                               execution_id = execution_id,
-                                              incoming_files = incoming_files,
-                                              sandbox_base = sandbox_base)
+                                              incoming_files = incoming_files)
 
             logger.info(f"receive_files RESPONSE: {response_message}")
 
