@@ -127,7 +127,7 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
         return {"Error": str(e)}
 
 
-def receive_files(user_id: str, execution_id:str, incoming_files:list) -> dict:
+def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_base:str) -> dict:
     """
     Receives base64-encoded files and stores them on disk.
     Expected format:
@@ -137,11 +137,9 @@ def receive_files(user_id: str, execution_id:str, incoming_files:list) -> dict:
     if isinstance(incoming_files, str):
         incoming_files = json.loads(incoming_files)
 
-    # Since all files in execution share outputs path, we can extract it from the first one
-    sandbox_base = incoming_files[0].get("sandbox_base")
-    if not file_name or not content_b64:
-        raise ValueError("Missing 'relative_path' or 'content_b64' in a file entry")
-    
+    if not sandbox_base:
+        raise ValueError("Missing 'sandbox_base' needed to store outputs")
+
     dest_dir = os.path.join(sandbox_base, user_id, execution_id)
 
     try:
