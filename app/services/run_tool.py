@@ -426,7 +426,6 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         # Define directories
         user_folder = os.path.join(sandbox_fem, user_id)
         execution_folder = os.path.join(user_folder, execution_id)
-        argument_values['sandbox_execution'] = execution_folder
 
         # Check and create directories if they don't exist
         if not os.path.exists(user_folder):
@@ -469,6 +468,22 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         logging.info(error_message)
         return error_message, None
     
+    # Create an execution folder. For docker systems, prepend always "/sandbox"
+    # For other systems, prepend the dynamic $sandbox_host
+    if isinstance(cmd, list):
+        cmd = "\n".join(cmd)
+    else:
+        cmd = cmd
+
+    if 'curl -X' in cmd:
+        argument_values['sandbox_execution'] = (
+            f"{argument_values['sandbox_host']}/%%user_id%%/%%execution_id%%"
+        )
+    else:
+        argument_values['sandbox_execution'] = (
+            f"{argument_values['sandbox_fem']}"
+        )
+
     try:
 
         resolved_cmd = resolve_cmd_placeholders(json_config, json_action, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
