@@ -1,9 +1,5 @@
 FROM python:3.10-slim
 
-# Build-time arguments for user and group IDs
-ARG UID=1000
-ARG GID=1000
-
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -15,10 +11,6 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a user and group with the given UID and GID
-RUN groupadd -g ${GID} prod || true && \
-    useradd -m -u ${UID} -g prod -s /bin/bash prod
-
 # Copy app and fix permissions
 COPY ./app/ /app/
 RUN chown -R ${UID}:${GID} /app
@@ -28,6 +20,3 @@ WORKDIR /app
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Drop to non-root user
-USER prod
