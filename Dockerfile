@@ -11,12 +11,16 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy app and fix permissions
+# Copy app and container entrypoint
 COPY ./app/ /app/
-RUN chown -R ${UID}:${GID} /app
+COPY ./entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 WORKDIR /app
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Use the container_entrypoint.sh as entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
