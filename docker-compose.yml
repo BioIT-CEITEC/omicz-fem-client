@@ -6,7 +6,9 @@ services:
     environment:
       - UID=${UID}
       - GID=${GID}
-      - HOST_FEMC_PATH=$HOST_FEMC_PATH
+      - USER_NAME=${USER_NAME}
+      - DOCKER_GID=${DOCKER_GID}
+      - HOST_FEMC_PATH=${HOST_FEMC_PATH}
       - SANDBOX_PATH=/sandbox
       - DATA_PATH=/data
       - LOG_FILE=/app/receiver.log
