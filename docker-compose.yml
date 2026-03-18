@@ -23,4 +23,4 @@ services:
     restart: always
     stdin_open: true
     tty: true
-    command: python3 receiver.py
+    entrypoint: ["/app/entrypoint.sh"]
