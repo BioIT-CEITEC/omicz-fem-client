@@ -347,6 +347,11 @@ def run_receiver():
     try:
         if config.ssl_active:
             context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+
+            # Downgrade TLS version to avoid missmatches
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            context.maximum_version = ssl.TLSVersion.TLSv1_2
+
             context.check_hostname = False
             context.load_verify_locations(cafile=config.ssl_cafile_path)
             context.load_cert_chain(certfile=config.ssl_client_cert_path, keyfile=config.ssl_client_keys_path)
