@@ -77,6 +77,7 @@ usermod -aG docker "$HOST_USER"
 # 4. Fix ownership of /app
 # -------------------------
 chown -R "$HOST_UID:$HOST_GID" /app
+chown -R "$HOST_UID:$HOST_GID" /sandbox
 
 # -------------------------
 # 5. Switch to host user and run receiver.py
