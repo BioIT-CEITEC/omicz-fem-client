@@ -3,6 +3,8 @@ import logging
 import base64
 from config import config
 import json
+import argparse
+import sys
 
 def list_files(user_id, execution_id, path, sandbox_base):
     try:
@@ -183,3 +185,68 @@ def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_b
         "status": "success",
         "files_stored": stored_files
     }
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Data operations CLI")
+
+    # Command
+    parser.add_argument("command", choices=[
+        "list_files",
+        "send_files",
+        "receive_files"
+    ])
+
+    # All possible arguments (defined once)
+    parser.add_argument("--user_id")
+    parser.add_argument("--execution_id")
+    parser.add_argument("--sandbox_base")
+    parser.add_argument("--path")
+    parser.add_argument("--file")
+    parser.add_argument("--incoming_files")
+
+    args = parser.parse_args()
+
+    try:
+        if args.command == "list_files":
+            result = list_files(
+                args.user_id,
+                args.execution_id,
+                args.path,
+                args.sandbox_base
+            )
+
+        elif args.command == "send_files":
+            result = send_files_as_json(
+                args.user_id,
+                args.execution_id,
+                args.sandbox_base,
+                args.file
+            )
+
+        elif args.command == "receive_files":
+            result = receive_files(
+                args.user_id,
+                args.execution_id,
+                args.incoming_files,
+                args.sandbox_base
+            )
+
+        # Always output valid JSON to stdout
+        print(json.dumps(result), flush=True)
+
+        # If your function signals error via dict, exit non-zero
+        if isinstance(result, dict) and "error" in result:
+            sys.exit(1)
+        else:
+            sys.exit(0)
+
+    except Exception as e:
+        # Log to stderr (not stdout!)
+        logging.exception("Unhandled error")
+
+        error_output = {"error": str(e)}
+        print(json.dumps(error_output), file=sys.stdout, flush=True)
+
+        sys.exit(1)
