@@ -57,7 +57,7 @@ def list_files(user_id, execution_id, path, sandbox_base):
         return tree
 
     except Exception as e:
-        return {"Error": str(e)}
+        return {"error": str(e)}
     
 def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: str = None) -> str:
     """
@@ -122,7 +122,7 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
         }
     
     except Exception as e:
-        return {"Error": str(e)}
+        return {"error": str(e)}
 
 
 def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_base:str) -> dict:
@@ -149,7 +149,7 @@ def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_b
 
     except Exception as e:
         logging.error(f"Could not create directory {dest_dir}: {e}")
-        return {"Error": str(e)}
+        return {"error": str(e)}
 
     stored_files = []
 
@@ -177,7 +177,7 @@ def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_b
 
         except Exception as e:
             logging.error(f"Error storing file {file_entry}: {e}")
-            stored_files.append({"file_name": file_entry.get("file_name"), "Error": str(e)})
+            stored_files.append({"file_name": file_entry.get("file_name"), "error": str(e)})
 
     return {
         "status": "success",
