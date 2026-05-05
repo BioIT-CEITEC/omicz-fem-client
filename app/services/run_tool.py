@@ -489,9 +489,9 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         resolved_cmd = resolve_cmd_placeholders(json_config, json_action, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
         
         # Run the command
-        process = subprocess.run(resolved_cmd, shell=True,  executable="/bin/bash", capture_output=True)
+        process = subprocess.run(resolved_cmd, shell=True,  executable="/bin/bash", capture_output=True, text=True)
 
-        response = process.stdout.decode().strip()
+        response = process.stdout.strip()
         logger.info(f"Command executed successfully: {response}")
             
         return response, sandbox_fem
