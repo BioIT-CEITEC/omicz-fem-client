@@ -492,7 +492,18 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         process = subprocess.run(resolved_cmd, shell=True,  executable="/bin/bash", capture_output=True, text=True)
 
         response = process.stdout.strip()
-        logger.info(f"Command executed successfully: {response}")
+        error = process.stderr.strip()
+
+        if process.returncode != 0:
+            logger.error(f"Command failed: {error}")
+            response = {
+                "status": "error",
+                "error": error,
+                "stdout": response,
+                "returncode": process.returncode
+            }
+        else:
+            logger.info(f"Command executed successfully: {response}")
             
         return response, sandbox_fem
 
