@@ -84,8 +84,4 @@ chown -R "$HOST_UID:$HOST_GID" /sandbox
 # -------------------------
 
 echo "Launching fem-client as $HOST_USER"
-exec env \
-    LOG_FILE="/app/receiver.log" \
-    HOME="/home/$HOST_USER" \
-    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    su "$HOST_USER" -s /bin/bash -c "python3 /app/receiver.py"
+exec gosu "$HOST_USER" python3 /app/receiver.py
