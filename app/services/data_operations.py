@@ -57,7 +57,6 @@ def list_files(user_id, execution_id, path, sandbox_base):
         return tree
 
     except Exception as e:
-        print(f"Error: {e}")
         return {"Error": str(e)}
     
 def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: str = None) -> str:
@@ -123,7 +122,6 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
         }
     
     except Exception as e:
-        print(f"Error: {e}")
         return {"Error": str(e)}
 
 
