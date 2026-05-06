@@ -279,14 +279,12 @@ def on_request(ch, method, props, body, logger):
  
         elif components[0] == "list_files":
             user_id, execution_id, path = components[1:4]
-            sandbox_base = get_execution_sandbox(execution_id) or os.environ.get("SANDBOX_PATH", "/sandbox")
 
             logger.info(f'[.] Received list_files command for path: {path}')
 
 
             parametric_args = {
-                "path": path,
-                "sandbox_base": sandbox_base
+                "path": path
             }
 
             result, sandbox_path = run_tool(
@@ -304,11 +302,10 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"list_files RESPONSE: {response_message}")
 
         elif components[0] == "send_files":
-            user_id, execution_id, file, sandbox_base = components[1:5]
+            user_id, execution_id, file = components[1:4]
 
             parametric_args = {
-                "file": file,
-                "sandbox_base": sandbox_base
+                "file": file
             }
 
             result, sandbox_path = run_tool(
@@ -327,13 +324,12 @@ def on_request(ch, method, props, body, logger):
 
 
         elif components[0] == "receive_files":
-            user_id, execution_id, incoming_files, sandbox_base = components[1:5]
+            user_id, execution_id, incoming_files = components[1:4]
 
             logger.info(f'[.] Received receive_files command for execution_id: {execution_id}')
 
             parametric_args = {
-                "incoming_files": incoming_files,
-                "sandbox_base": sandbox_base
+                "incoming_files": incoming_files
             }
 
             result, sandbox_path = run_tool(
