@@ -283,23 +283,45 @@ def on_request(ch, method, props, body, logger):
 
             logger.info(f'[.] Received list_files command for path: {path}')
 
-            response_message = list_files(user_id=user_id,
-                                execution_id=execution_id,
-                                path=path,
-                                sandbox_base = sandbox_base)
-            
-            #response_message = json.loads(result)
+
+            parametric_args = {
+                "path": path,
+                "sandbox_base": sandbox_base
+            }
+
+            result, sandbox_path = run_tool(
+                task_info=None,
+                execution=execution_id,
+                parametric_args=parametric_args,
+                user_id=user_id,
+                public_ip=None,
+                json_action="list_files",
+                token=None
+            )
+
+            response_message = json.loads(result)
+
             logger.info(f"list_files RESPONSE: {response_message}")
 
         elif components[0] == "send_files":
             user_id, execution_id, file, sandbox_base = components[1:5]
 
-            logger.info(f'[.] Received send_files command for execution_id: {execution_id}')
+            parametric_args = {
+                "file": file,
+                "sandbox_base": sandbox_base
+            }
 
-            response_message = send_files_as_json(user_id = user_id, 
-                                                  execution_id = execution_id, 
-                                                  file = file,
-                                                  sandbox_base = sandbox_base)
+            result, sandbox_path = run_tool(
+                task_info=None,
+                execution=execution_id,
+                parametric_args=parametric_args,
+                user_id=user_id,
+                public_ip=None,
+                json_action="send_files",
+                token=None
+            )
+
+            response_message = json.loads(result)
 
             logger.info(f"send_files RESPONSE: {response_message}")
 
@@ -309,11 +331,22 @@ def on_request(ch, method, props, body, logger):
 
             logger.info(f'[.] Received receive_files command for execution_id: {execution_id}')
 
-            response_message = receive_files(user_id = user_id,
-                                              execution_id = execution_id,
-                                              incoming_files = incoming_files,
-                                              sandbox_base = sandbox_base
-                                              )
+            parametric_args = {
+                "incoming_files": incoming_files,
+                "sandbox_base": sandbox_base
+            }
+
+            result, sandbox_path = run_tool(
+                task_info=None,
+                execution=execution_id,
+                parametric_args=parametric_args,
+                user_id=user_id,
+                public_ip=None,
+                json_action="receive_files",
+                token=None
+            )
+
+            response_message = json.loads(result)
 
             logger.info(f"receive_files RESPONSE: {response_message}")
 
