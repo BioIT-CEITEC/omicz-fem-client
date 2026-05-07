@@ -295,22 +295,27 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     
     logger = logging.getLogger("receiver")
 
-    # Apply different logic if json_action handles files
-    FILE_ACTIONS = {"list_files", "send_files", "receive_files"}
+    try:
+        # Apply different logic if json_action handles files
+        FILE_ACTIONS = {"list_files", "send_files", "receive_files"}
 
-    is_file_action = json_action in FILE_ACTIONS
+        is_file_action = json_action in FILE_ACTIONS
 
-    # File actions already receive raw execution_id
-    if is_file_action:
-        execution_id = execution
-        task_id = "file_action"
+        # File actions already receive raw execution_id
+        if is_file_action:
+            execution_id = execution
+            task_id = "file_action"
 
-    else:
-        execution = json.loads(execution)
-        execution_id = execution.get('execution_id')
+        else:
+            execution = json.loads(execution)
+            execution_id = execution.get('execution_id')
 
-        task_info = ast.literal_eval(task_info)
-        task_id = task_info.get("_id")
+            task_info = ast.literal_eval(task_info)
+            task_id = task_info.get("_id")
+    except Exception as e:
+        error_message = f"Initialization failed: {e}"
+        logger.info(error_message)
+        return error_message, None
 
     # Dictionari of internal function variables
     argument_values = {
