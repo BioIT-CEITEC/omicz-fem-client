@@ -294,12 +294,23 @@ def resolve_cmd_placeholders(json_config, json_action, cmd, argument_values=None
 def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_action, token):
     
     logger = logging.getLogger("receiver")
-    execution = json.loads(execution)
-    execution_id = execution.get('execution_id')
-    logger.info(f"execution_id: {execution_id}")
 
-    task_info = ast.literal_eval(task_info)
-    task_id = task_info.get("_id")
+    # Apply different logic if json_action handles files
+    FILE_ACTIONS = {"list_files", "send_files", "receive_files"}
+
+    is_file_action = json_action in FILE_ACTIONS
+
+    # File actions already receive raw execution_id
+    if is_file_action:
+        execution_id = execution
+        task_id = "file_action"
+
+    else:
+        execution = json.loads(execution)
+        execution_id = execution.get('execution_id')
+
+        task_info = ast.literal_eval(task_info)
+        task_id = task_info.get("_id")
 
     # Dictionari of internal function variables
     argument_values = {
@@ -336,7 +347,10 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     try: 
 
         # Use either task_info or execution object depending on the received components:
-        if not (json_action == "submit_run" or "health-check" in task_id):
+        if (
+            not is_file_action
+            and not (json_action == "submit_run" or "health-check" in task_id)
+        ):
             #If there's no task/tool info provided, use the execution object
             # Extract process_info list from the execution
             process_info_list = execution.get("process_info", [])
@@ -347,7 +361,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
                 None  # Default value if no match is found
             )
 
-        if not task_info:
+        if not is_file_action and not task_info:
             raise ValueError("Not task_info or execution_info downloaded from DDBB")
         logger.info(f"Task info correctly fetched for {json_action}")
         
