@@ -324,7 +324,7 @@ def on_request(ch, method, props, body, logger):
 
 
         elif components[0] == "receive_files":
-            user_id, execution_id, incoming_files = components[1:4]
+            user_id, execution_id, incoming_files, token = components[1:5]
 
             logger.info(f'[.] Received receive_files command for execution_id: {execution_id}')
 
@@ -339,7 +339,7 @@ def on_request(ch, method, props, body, logger):
                 user_id=user_id,
                 public_ip=None,
                 json_action="receive_files",
-                token=None
+                token=token
             )
 
             response_message = json.loads(result)
