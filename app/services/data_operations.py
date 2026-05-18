@@ -6,7 +6,7 @@ import json
 import argparse
 import sys
 
-def list_files(user_id, execution_id, path, sandbox_base):
+def list_files(user_id, execution_id, path, sandbox_fem):
     try:
         # Get DATA base paths from env
         data_base = os.environ.get("DATA_PATH", "/data")
@@ -16,7 +16,7 @@ def list_files(user_id, execution_id, path, sandbox_base):
         if path.startswith("/sandbox"):
             if not user_id or not execution_id:
                 raise ValueError("user_id and execution_id are required for /sandbox paths.")
-            target_path = os.path.join(sandbox_base, str(user_id), str(execution_id))
+            target_path = os.path.join(sandbox_fem, str(user_id), str(execution_id))
         elif path.startswith("/data"):
             # Trim "/data" and join any subpath
             sub_path = path[5:].lstrip("/")
@@ -55,13 +55,12 @@ def list_files(user_id, execution_id, path, sandbox_base):
                         del d[k]
 
         cleanup(tree)
-        tree["sandbox_base"] = sandbox_base
         return tree
 
     except Exception as e:
         return {"error": str(e)}
     
-def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: str = None) -> str:
+def send_files_as_json(user_id: str, execution_id:str, sandbox_fem:str, file: str = None) -> str:
     """
     Prepares a file or all files in a folder (recursively) as a JSON string
     suitable for sending via RabbitMQ. Includes base64-encoded file content and
@@ -82,7 +81,7 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
     try:
 
         # Convert file paths to absolute paths
-        sandbox_path = sandbox_base
+        sandbox_path = sandbox_fem
         path = os.path.join(sandbox_path, user_id, execution_id, file)
         logging.info(f"Sending file or folder: {path}")
 
@@ -127,7 +126,7 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_base:str, file: s
         return {"error": str(e)}
 
 
-def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_base:str) -> dict:
+def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_fem:str) -> dict:
     """
     Receives base64-encoded files and stores them on disk.
     Expected format:
@@ -137,10 +136,10 @@ def receive_files(user_id: str, execution_id:str, incoming_files:list, sandbox_b
     if isinstance(incoming_files, str):
         incoming_files = json.loads(incoming_files)
 
-    if not sandbox_base:
-        raise ValueError("Missing 'sandbox_base' needed to store outputs")
+    if not sandbox_fem:
+        raise ValueError("Missing 'sandbox_fem' needed to store outputs")
 
-    dest_dir = os.path.join(sandbox_base, user_id, execution_id)
+    dest_dir = os.path.join(sandbox_fem, user_id, execution_id)
 
     try:
         # Build destination directory
@@ -201,7 +200,7 @@ if __name__ == "__main__":
     # All possible arguments (defined once)
     parser.add_argument("--user_id")
     parser.add_argument("--execution_id")
-    parser.add_argument("--sandbox_base")
+    parser.add_argument("--sandbox_fem")
     parser.add_argument("--path")
     parser.add_argument("--file")
     parser.add_argument("--incoming_files")
@@ -214,14 +213,14 @@ if __name__ == "__main__":
                 args.user_id,
                 args.execution_id,
                 args.path,
-                args.sandbox_base
+                args.sandbox_fem
             )
 
         elif args.command == "send_files":
             result = send_files_as_json(
                 args.user_id,
                 args.execution_id,
-                args.sandbox_base,
+                args.sandbox_fem,
                 args.file
             )
 
@@ -230,7 +229,7 @@ if __name__ == "__main__":
                 args.user_id,
                 args.execution_id,
                 args.incoming_files,
-                args.sandbox_base
+                args.sandbox_fem
             )
 
         # Always output valid JSON to stdout
