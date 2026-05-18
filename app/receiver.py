@@ -278,7 +278,7 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"RESPONSE: {response_message}")
  
         elif components[0] == "list_files":
-            user_id, execution_id, path = components[1:4]
+            user_id, execution_id, path, token = components[1:5]
 
             logger.info(f'[.] Received list_files command for path: {path}')
 
@@ -294,7 +294,7 @@ def on_request(ch, method, props, body, logger):
                 user_id=user_id,
                 public_ip=None,
                 json_action="list_files",
-                token=None
+                token=token
             )
 
             response_message = json.loads(result)
@@ -302,7 +302,7 @@ def on_request(ch, method, props, body, logger):
             logger.info(f"list_files RESPONSE: {response_message}")
 
         elif components[0] == "send_files":
-            user_id, execution_id, file = components[1:4]
+            user_id, execution_id, file, token = components[1:5]
 
             parametric_args = {
                 "file": file
@@ -315,7 +315,7 @@ def on_request(ch, method, props, body, logger):
                 user_id=user_id,
                 public_ip=None,
                 json_action="send_files",
-                token=None
+                token=token
             )
 
             response_message = json.loads(result)
