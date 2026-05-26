@@ -25,6 +25,7 @@ The key functions of the FEM client include:
     - Unix-based S.O. 
     - Docker and Docker Compose
     - 2CPUs and 4GB
+    - _jq_ must be installed in the system that hosts FEM client (see instructions below)
   - Minimal client connectivity requirements:
     - Outgoing connection to RabbitMQ server
     - Default port: 5671 (AMQPS 1.0 over TLS)
@@ -37,6 +38,27 @@ The key functions of the FEM client include:
 This flexible architecture ensures the FEM-client can be integrated with a wide variety of systems while maintaining data locality and autonomy.
 
 > Please, consider that tools, pipelines or FL frameworks triggered by FEM have their on connectivity requirements.
+
+### Installing  _jq_
+In Ubuntu 14+ OS, follow these steps:
+```
+sudo apt update
+
+sudo apt install jq
+```
+
+To test it's correctly installed:
+```
+echo '{ "name":"John", "age":31, "city":"New York" }' | jq .
+```
+The result should appear like so in your terminal:
+```
+{
+  "name": "John",
+  "age": 31,
+  "city": "New York"
+}
+```
 
 ### Optional: GPU setup
 
