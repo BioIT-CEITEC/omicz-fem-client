@@ -23,7 +23,7 @@ The key functions of the FEM client include:
 - To run the FEM-client, the deploying node must provide a basic computational environment capable of executing federated tasks locally:
   - Minimal technical requirements:
     - Unix-based S.O. 
-    - Docker and Docker Compose
+    - Docker and Docker Compose (>= v2)
     - 2CPUs and 4GB
     - _jq_ must be installed in the system that hosts FEM client (see instructions below)
   - Minimal client connectivity requirements:
