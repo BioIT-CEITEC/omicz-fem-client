@@ -494,7 +494,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     else:
         cmd = cmd
 
-    cmd_submit = cmd = json_config.get("submit_run", {}).get("cmd", {})
+    cmd_submit = json_config.get("submit_run", {}).get("cmd", {})
     if 'curl -X' in cmd or 'curl -X' in cmd_submit:
         argument_values['sandbox_execution'] = (
             f"{argument_values['sandbox_host']}/%%user_id%%/%%execution_id%%"
