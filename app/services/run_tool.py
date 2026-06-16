@@ -443,15 +443,17 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
                 raise FileNotFoundError(f"Default SANDBOX_PATH not found or invalid: {sandbox_fem}")
 
         # Define directories
-        user_folder = os.path.join(sandbox_fem, user_id)
-        execution_folder = os.path.join(user_folder, execution_id)
+        # Temporary solution for action that does not need sandbox_path
+        if json_action != "list_files":
+            user_folder = os.path.join(sandbox_fem, user_id)
+            execution_folder = os.path.join(user_folder, execution_id)
 
-        # Check and create directories if they don't exist
-        if not os.path.exists(user_folder):
-            os.makedirs(user_folder)
+            # Check and create directories if they don't exist
+            if not os.path.exists(user_folder):
+                os.makedirs(user_folder)
 
-        if not os.path.exists(execution_folder):
-            os.makedirs(execution_folder)
+            if not os.path.exists(execution_folder):
+                os.makedirs(execution_folder)
 
     except Exception as e:
         error_message = f"Execution folder setup failed: {e}"
