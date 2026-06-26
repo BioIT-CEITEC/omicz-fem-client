@@ -513,23 +513,45 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         # Run the command
         process = subprocess.run(resolved_cmd, shell=True,  executable="/bin/bash", capture_output=True, text=True)
 
-        response = process.stdout.strip()
-        error = process.stderr.strip()
+        stdout = process.stdout.strip()
+        stderr = process.stderr.strip()
 
         if process.returncode != 0:
-            logger.error(f"Command failed: {error}")
+            logger.error(f"Command failed (rc={process.returncode})")
+            if stderr:
+                logger.error(stderr)
+            if stdout:
+                logger.error(f"stdout: {stdout}")
+
             response = {
                 "status": "error",
-                "error": error,
-                "stdout": response,
+                "error": stderr,
+                "stdout": stdout,
                 "returncode": process.returncode
             }
+
         else:
-            logger.info(f"Command executed successfully: {response}")
-            
-        return response, sandbox_fem
+            logger.info(f"Command executed successfully: {stdout}")
+
+            try:
+                json.loads(stdout)
+                return stdout, sandbox_fem
+            except json.JSONDecodeError as e:
+                response = {
+                    "status": "error",
+                    "error": f"Command returned invalid JSON: {e}",
+                    "stdout": stdout,
+                    "returncode": 0
+                }
+
+        return json.dumps(response), sandbox_fem
 
     except Exception as e:
-        error_message = f"An error occurred trying to resolve the cmd: {e}"
-        logger.info(error_message)
-        return json.dumps({"error": error_message}), None
+        logger.exception("run_tool failed")
+
+        response = {
+            "status": "error",
+            "error": str(e)
+        }
+
+        return json.dumps(response), None
