@@ -444,7 +444,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
 
         # Define directories
         # Temporary solution for action that does not need sandbox_path
-        if json_action != "list_files":
+        if json_action != "list_files" and execution_id:
             user_folder = os.path.join(sandbox_fem, user_id)
             execution_folder = os.path.join(user_folder, execution_id)
 
