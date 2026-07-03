@@ -80,24 +80,35 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_fem:str, file: st
 
     try:
 
-        # Convert file paths to absolute paths
-        sandbox_path = sandbox_fem
-        path = os.path.join(sandbox_path, user_id, execution_id, file)
-        logging.info(f"Sending file or folder: {path}")
+        # Get DATA base paths from env
+        data_base = os.environ.get("DATA_PATH", "/data")
 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Path does not exist: {path}")
+        if execution_id:
+            if not user_id or not execution_id:
+                raise ValueError("user_id and execution_id are required for /sandbox paths.")
+            target_path = os.path.join(sandbox_fem, str(user_id), str(execution_id), str(file))
+        elif file.startswith("/data"):
+            # Trim "/data" and join any subpath
+            sub_path = file[5:].lstrip("/")
+            target_path = os.path.join(data_base, sub_path)
+        else:
+            raise ValueError("Path must start with /sandbox or /data.")
+        
+        logging.info(f"Sending file or folder: {target_path}")
+
+        if not os.path.exists(target_path):
+            raise FileNotFoundError(f"Path does not exist: {target_path}")
 
         files_payload = []
 
-        if os.path.isfile(path):
-            base_dir = os.path.dirname(path)
-            files = [path]
+        if os.path.isfile(target_path):
+            base_dir = os.path.dirname(target_path)
+            files = [target_path]
         else:
-            base_dir = path
+            base_dir = target_path
             files = [
                 os.path.join(root, filename)
-                for root, _, filenames in os.walk(path)
+                for root, _, filenames in os.walk(target_path)
                 for filename in filenames
             ]
 
@@ -118,7 +129,6 @@ def send_files_as_json(user_id: str, execution_id:str, sandbox_fem:str, file: st
 
         return {
             "base_dir": os.path.basename(base_dir),
-            "sandbox_execution": sandbox_path,
             "files": files_payload
         }
     
