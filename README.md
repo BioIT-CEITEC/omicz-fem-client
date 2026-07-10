@@ -191,9 +191,6 @@ bash setup_service.sh
 5. Monitor the receiver:
 `docker logs -f fem-client`
 
-```
-
-
 
 
 
