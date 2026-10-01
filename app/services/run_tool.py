@@ -509,7 +509,7 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
     try:
 
         resolved_cmd = resolve_cmd_placeholders(json_config, json_action, cmd, argument_values, task_info=task_info, parametric_args=parametric_args)
-        
+        print("Resolved command to execute:", resolved_cmd)
         # Run the command
         process = subprocess.run(resolved_cmd, shell=True,  executable="/bin/bash", capture_output=True, text=True)
 
