@@ -311,7 +311,12 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
             execution_id = execution.get('execution_id')
 
             task_info = ast.literal_eval(task_info)
-            task_id = task_info.get("_id")
+            # The orchestrator names the task only on the submitting call. Every follow-up
+            # for the same execution (run_status, cancel_run, ...) arrives as {'_id': None},
+            # and task_id is what the health-check branches below key on -- `"health-check"
+            # in None` raises. The execution's tool_id carries the same identity, so it is
+            # the fallback, and an unnameable task becomes "" rather than None.
+            task_id = task_info.get("_id") or execution.get("tool_id") or ""
     except Exception as e:
         error_message = f"Initialization failed: {e}"
         logger.info(error_message)
@@ -460,6 +465,9 @@ def run_tool(task_info, execution, parametric_args, user_id, public_ip, json_act
         logger.info(error_message)
         return json.dumps({"error": error_message}), None
     
+    # A health-check execution has no run behind it: it completes inside this call, so
+    # run_status and cancel_run have no external id to ask about and answer with the same
+    # diagnostics the submission did, rather than failing on a run that never existed.
     if "health-check" in task_id:
         # Resolve command to print available docker images
         images_cmd=json_config.get("print_images", {}).get("cmd", {})

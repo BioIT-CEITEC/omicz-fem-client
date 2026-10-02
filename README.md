@@ -191,6 +191,26 @@ bash setup_service.sh
 5. Monitor the receiver:
 `docker logs -f fem-client`
 
+## Message protocol
+
+`docs/protocol.md` documents every field of every message exchanged with the orchestrator:
+the pipe-delimited request format and its per-verb parameters, the `task_info` / `execution`
+/ `parametric_args` structures, the chunked reply envelope, and every reply payload
+(including the error shapes and the cases where no reply is sent at all).
+
+## Delegating execution to a GA4GH WES endpoint
+
+`app/services/wes_client.py` submits and monitors runs on a WES 1.1 service instead of the
+local Docker daemon. Which registered workflow a task may run, which parameters it may pass
+and which files it may upload is site policy, declared in `docs/wes-catalogue.example.json`;
+`docs/launcher-wes.json` is the matching launcher config. See `docs/wes-mapping.md`.
+
+
+## Running on Kubernetes
+
+See `k8s/` for manifests that replace the docker-compose deployment when task execution is
+delegated to an HTTP API instead of a local Docker daemon.
+
 
 
 
