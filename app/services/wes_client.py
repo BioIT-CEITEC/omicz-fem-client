@@ -25,6 +25,8 @@ import sys
 
 import requests
 
+from services import results_store
+
 DEFAULT_CATALOGUE = os.environ.get("WES_CATALOGUE", "/app/config/wes-catalogue.json")
 
 
@@ -207,7 +209,15 @@ def action_submit(args):
             handle[1].close()
 
     response.raise_for_status()
-    return {"external_id": response.json().get("run_id")}
+    run_id = response.json().get("run_id")
+
+    # The file actions reach the result service by run id, and `run_tool` calls them with
+    # no task_info -- `%%EXTERNAL_ID%%` cannot be resolved for them. This is the only call
+    # that sees the id, so it leaves it in the execution's sandbox folder.
+    results_store.record_run(
+        args.sandbox_local, args.user_id, args.execution_id, run_id, args.task_id
+    )
+    return {"external_id": run_id}
 
 
 def read_log(value, token, timeout):
