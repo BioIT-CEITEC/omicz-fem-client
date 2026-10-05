@@ -1,26 +1,42 @@
+# FEM-client image. One image for both deployments: docker-compose.yml here and the
+# manifests in k8s/ run it with the same user, the same mounts and the same entrypoint.
+#
+# What it no longer carries, and why:
+#   - no docker CLI, docker-compose or gosu: tasks are submitted to a WES API, so the
+#     container starts no containers and never sees /var/run/docker.sock;
+#   - no entrypoint.sh: there is no UID/GID remapping and no chown step, because the
+#     container never runs as root;
+#   - no build toolchain: nothing is compiled at runtime.
+#
+# It runs as UID 1000 (runAsUser in the manifests) and works with a read-only root
+# filesystem: everything it writes to is a mount.
 FROM python:3.10-slim
 
-# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        bash curl git jq ca-certificates gnupg lsb-release gosu\
-        build-essential python3-dev libffi-dev libyaml-dev sudo && \
-    curl -L "https://github.com/docker/compose/releases/download/v2.24.1/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose && \
-    chmod +x /usr/local/bin/docker-compose && \
-    curl -fsSL https://get.docker.com | sh && \
+        bash curl jq git ca-certificates openssl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy app and container entrypoint
 COPY ./app/ /app/
-COPY ./entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
 
 WORKDIR /app
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Use the container_entrypoint.sh as entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Mount points supplied by the deployment: /app/config (ro), /sandbox, /var/log/fem, /tmp.
+# No /data: the datasets are mounted by the WES workers, not by this container.
+#
+# The two writable ones are created here, owned by the runtime user. On Kubernetes an
+# emptyDir/PVC with fsGroup 1000 would cover it, but a docker-compose named volume is
+# initialised from the image: an absent or root-owned directory becomes a root-owned
+# volume that uid 1000 cannot write, and the receiver dies on its own log file.
+RUN install -d -o 1000 -g 1000 /sandbox /var/log/fem
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+USER 1000
+
+ENTRYPOINT ["python3", "/app/receiver.py"]

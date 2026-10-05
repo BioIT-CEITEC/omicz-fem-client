@@ -1,0 +1,29 @@
+{
+  "submit_run": {
+    "cmd": "python3 -m services.wes_client submit --wes-url '%%WES_URL%%' --token '%%token%%' --image '%%DOCKER_IMAGE_REPO%%%%DOCKER_IMAGE_NAME%%:%%DOCKER_IMAGE_TAG%%' --task-command '%%TASK_COMMAND%%' --task-id '%%task_id%%' --execution-id '%%execution_id%%' --user-id '%%user_id%%' --node '%%node_name%%' --sandbox-local '%%sandbox_fem%%' --sandbox-remote '%%sandbox_host%%' --data-remote '%%data_path%%' --timeout 120",
+    "cmd_gpu": "python3 -m services.wes_client submit --wes-url '%%WES_URL%%' --token '%%token%%' --image '%%DOCKER_IMAGE_REPO%%%%DOCKER_IMAGE_NAME%%:%%DOCKER_IMAGE_TAG%%' --task-command '%%TASK_COMMAND%%' --task-id '%%task_id%%' --execution-id '%%execution_id%%' --user-id '%%user_id%%' --node '%%node_name%%' --sandbox-local '%%sandbox_fem%%' --sandbox-remote '%%sandbox_host%%' --data-remote '%%data_path%%' --timeout 120"
+  },
+  "run_status": {
+    "cmd": "python3 -m services.wes_client status --wes-url '%%WES_URL%%' --token '%%token%%' --external-id '%%EXTERNAL_ID%%' --task-id '%%task_id%%' --execution-id '%%execution_id%%' --user-id '%%user_id%%' --sandbox-local '%%sandbox_fem%%' --timeout 30"
+  },
+  "run_report": {
+    "cmd": "python3 -m services.wes_client report --wes-url '%%WES_URL%%' --token '%%token%%' --external-id '%%EXTERNAL_ID%%' --timeout 30"
+  },
+  "cancel_run": {
+    "cmd": "python3 -m services.wes_client cancel --wes-url '%%WES_URL%%' --token '%%token%%' --external-id '%%EXTERNAL_ID%%' --timeout 30"
+  },
+  "print_images": {
+    "cmd": "python3 -m services.wes_client images --wes-url '%%WES_URL%%' --token '%%token%%' --timeout 15"
+  },
+  "list_files": {
+    "cmd": "python3 -m services.data_operations list_files --user_id '%%user_id%%' --execution_id '%%execution_id%%' --path '%%path%%' --sandbox_fem '%%sandbox_fem%%' --results_url '%%RESULTS_URL%%' --passport '%%token%%'"
+  },
+  "send_files": {
+    "cmd": "python3 -m services.data_operations send_files --user_id '%%user_id%%' --execution_id '%%execution_id%%' --file '%%file%%' --sandbox_fem '%%sandbox_fem%%' --results_url '%%RESULTS_URL%%' --passport '%%token%%'"
+  },
+  "receive_files": {
+    "cmd": "python3 -m services.data_operations receive_files --user_id '%%user_id%%' --execution_id '%%execution_id%%' --incoming_files '%%incoming_files%%' --sandbox_fem '%%sandbox_fem%%'"
+  },
+  "system_var_handler": {},
+  "site_vars": {}
+}

@@ -1,24 +1,116 @@
+# FEM client on a Docker host, driving a GA4GH WES API and the omicz result service.
+#
+#   cp .env.example .env            # then set at least FEM_RABBIT_PASSWORD
+#   cp -r config.example config     # then add the broker PEMs to config/rabbitmq-certificates/
+#   docker compose up -d
+#
+# `config/` is gitignored — it is this node's site configuration. `k8s/configmap.yaml`
+# carries the same content for the cluster.
+#
+# This runs exactly what `k8s/deployment.yaml` runs — one container, the receiver — with
+# the same image, the same environment and the same config files, only addressed the way
+# compose addresses things. There is nothing else to start: the WES API, the result
+# service and the orchestrator's broker are all somebody else's processes.
+#
+# What this client no longer needs, and deliberately does not get:
+#
+#   /var/run/docker.sock   it starts no containers; the WES API does. The right to create
+#                          a container is the right to become root on this host, and the
+#                          WES-based launcher never uses it.
+#   /data                  the datasets are mounted by the WES workers. `list_files /data`
+#                          answers from `config.datasets`, so nothing is read here.
+#   UID/GID remapping     the image runs as uid 1000 and writes only to /sandbox,
+#                         /var/log/fem and /tmp, all of which it owns.
+#
+# Networking: FEM_NETWORK defaults to `omicz-wes-edge`, the network the omicz-wes compose
+# stack creates. `wes` and `results` are both on it, so WES_URL and RESULTS_URL resolve by
+# service name, and it has a gateway, so the orchestrator's broker is reachable too. With
+# the WES API somewhere else, set FEM_NETWORK=bridge and point the two URLs at it.
 services:
   fem-client:
-    build: ./
-    container_name: fem-client
-    image: registry.gitlab.bsc.es/fl/fem-client:v3.0.0
-    environment:
-      - UID=${UID}
-      - GID=${GID}
-      - USER_NAME=${USER_NAME}
-      - DOCKER_GID=${DOCKER_GID}
-      - HOST_FEMC_PATH=${HOST_FEMC_PATH}
-      - SANDBOX_PATH=/sandbox
-      - DATA_PATH=/data
-      - LOG_FILE=/app/receiver.log
+    image: ${FEM_IMAGE:-krkoo/fem-client:dev}
+    container_name: ${FEM_CONTAINER_NAME:-fem-client}
+    # The same image the k8s manifests run, built from ./Dockerfile. On an arm64 host it
+    # has to be built for amd64 — psutil 5.9.0 ships no arm64 wheel and the slim base
+    # image has no compiler:
+    #   docker build --platform linux/amd64 -t krkoo/fem-client:dev .
+    pull_policy: ${FEM_PULL_POLICY:-missing}
+    networks: [fem]
     volumes:
-      - ./config:/app/config
-      - ./app/receiver.log:/app/receiver.log
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${DATA_PATH}:/data:ro
-      - ${SANDBOX_PATH}:/sandbox:shared
-    restart: always
-    stdin_open: true
-    tty: true
-    entrypoint: ["/app/entrypoint.sh"]
+      # config.py, launcher.json, wes-catalogue.json and rabbitmq-certificates/*.pem.
+      - ${FEM_CONFIG_DIR:-./config}:/app/config:ro
+      # Staging for the files the orchestrator pushes in with `receive_files`, which
+      # become workflow attachments on the next submission, and for the run-id ledger
+      # `send_files` reads back. A run's results are not here — they are in the result
+      # service.
+      - ${FEM_SANDBOX_DIR:-fem-sandbox}:/sandbox
+      - ${FEM_LOG_DIR:-fem-logs}:/var/log/fem
+    read_only: true
+    tmpfs:
+      # `send_files` spools a result archive here before unpacking it, so this has to fit
+      # the largest archive a run of this node produces.
+      - /tmp:size=${FEM_TMPFS_SIZE:-2g}
+    cap_drop: [ALL]
+    environment:
+      # --- Node identity and the orchestrator's broker ---------------------------
+      FEM_NODE_NAME: ${FEM_NODE_NAME:?set FEM_NODE_NAME in .env}            # also the queue name
+      FEM_RABBIT_HOST: ${FEM_RABBIT_HOST:?set FEM_RABBIT_HOST in .env}
+      FEM_RABBIT_PORT: ${FEM_RABBIT_PORT:-5671}
+      FEM_RABBIT_VHOST: ${FEM_RABBIT_VHOST:?set FEM_RABBIT_VHOST in .env}
+      FEM_RABBIT_USER: ${FEM_RABBIT_USER:?set FEM_RABBIT_USER in .env}
+      FEM_RABBIT_PASSWORD: ${FEM_RABBIT_PASSWORD:?set FEM_RABBIT_PASSWORD in .env}
+      FEM_SSL_ACTIVE: ${FEM_SSL_ACTIVE:-true}
+      # Passphrase on the broker client key; empty when the key is unencrypted.
+      FEM_CERT_PHRASE: ${FEM_CERT_PHRASE:-}
+      # The FEM orchestrator's own API, not the WES.
+      FEM_API_BASE_URL: ${FEM_API_BASE_URL:?set FEM_API_BASE_URL in .env}
+
+      # --- WES API and result service --------------------------------------------
+      # launcher.json passes %%WES_URL%% and %%RESULTS_URL%% to every action and resolves
+      # both from the environment, so the two addresses are configured here and nowhere
+      # else. FEM_RESULTS_URL is the same address for the one caller that does not go
+      # through a placeholder, services/data_operations.
+      WES_URL: ${WES_URL:-http://wes:8000}
+      RESULTS_URL: ${RESULTS_URL:-http://results:8000}
+      FEM_RESULTS_URL: ${RESULTS_URL:-http://results:8000}
+      # No passport is configured here: `launcher.json` passes the request's own token as
+      # `--passport`, and that is the only identity a download may be made under.
+      # Renames a deliverable on the way back to the orchestrator: a glob over the archive
+      # path the workflow wrote, to the name the federation expects. {node} is the node
+      # name. Empty disables renaming.
+      FEM_RESULT_NAMES: ${FEM_RESULT_NAMES:-}
+      # Site policy: which federation image may run which registered WES workflow.
+      WES_CATALOGUE: /app/config/wes-catalogue.json
+
+      # --- Paths -----------------------------------------------------------------
+      # SANDBOX_PATH is this container's own mount and must exist or every action aborts.
+      # FEM_SANDBOX_REMOTE_PATH is what the catalogue hands the *workflow* as %SANDBOX%,
+      # so it is a path on the WES side.
+      #
+      # Nothing here names a data path. The datasets are addressed by id — the WES stages
+      # them itself — so `%DATA%` has nothing to resolve to and `config.data_path` stays
+      # empty. A site whose catalogue injects `%DATA%` sets FEM_DATA_REMOTE_PATH instead.
+      SANDBOX_PATH: /sandbox
+      FEM_SANDBOX_REMOTE_PATH: ${FEM_SANDBOX_REMOTE_PATH:-/sandbox}
+
+      LOG_FILE: /var/log/fem/receiver.log
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+
+networks:
+  fem:
+    name: ${FEM_NETWORK:-omicz-wes-edge}
+    external: true
+
+volumes:
+  fem-sandbox:
+  fem-logs:

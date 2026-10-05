@@ -4,3 +4,5 @@ config/config.py
 config/rabbitmq-ca/
 __pycache__
 venv/*
+
+.env

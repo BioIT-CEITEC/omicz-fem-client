@@ -175,12 +175,15 @@ def execution_members(
 
 
 def passports_from(values):
-    """Passports for the result service: the explicit flags, else the environment."""
-    tokens = [v for v in (values or []) if v]
-    if tokens:
-        return tokens
-    env = os.environ.get("FEM_RESULTS_PASSPORT", "").strip()
-    return [env] if env else []
+    """Passports for the result service, from the request and from nowhere else.
+
+    The only passport a download may use is the one the orchestrator sent with the
+    request: it names the caller, and the result service audits the download under that
+    subject. A passport configured on the node would answer every caller's request with
+    one identity, which is an impersonation, and it would outlive the request that
+    justified it.
+    """
+    return [v for v in (values or []) if v]
 
 
 def results_url_from(value):

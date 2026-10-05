@@ -1,0 +1,33 @@
+{
+  "workflows": {
+    "registry.gitlab.bsc.es/fl/gdi-goe-federatedvariantfiltering/goe-fedcomp-client:latest": {
+      "workflow_url": "compute3",
+      "workflow_type": "SNAKEMAKE",
+      "workflow_type_version": "9.0",
+
+      "allowed_params": ["dataset", "round", "fst", "ll_thresh"],
+      "param_types": {"round": "int", "fst": "float", "ll_thresh": "float"},
+      "param_defaults": {
+        "dataset": "goe_dataset",
+        "round": 0,
+        "fst": 0.01,
+        "ll_thresh": -9.375
+      },
+      "strict_params": false,
+
+      "attachments": ["global_freq.json"],
+
+      "tags": {"site_policy": "omicz-compose"}
+    },
+
+    "omicz/demo:latest": {
+      "workflow_url": "compute1",
+      "workflow_type": "SNAKEMAKE",
+      "workflow_type_version": "9.0",
+      "allowed_params": ["dataset"],
+      "param_defaults": {"dataset": "demo"},
+      "strict_params": false,
+      "attachments": ["input.txt"]
+    }
+  }
+}
