@@ -121,50 +121,37 @@ def _tree_from_names(names):
     return tree
 
 
-def _walk_tree(target_path):
-    tree = {}
+def _dataset_tree(sub_path):
+    """`/data` answered from `config.datasets`, not from a directory.
 
-    for root, dirs, files in os.walk(target_path):
-        # Calculate relative path from the root sandbox dir
-        rel_root = os.path.relpath(root, target_path)
-        if rel_root == ".":
-            rel_root = ""
+    The datasets are mounted by the WES workers, never by this container, so there is
+    nothing here to walk: what the federation may see is what the node declares.
+    """
+    datasets = getattr(config, "datasets", None) or {}
+    if not sub_path:
+        return {name: {"files": list(files)} for name, files in datasets.items()}
 
-        # Navigate to the correct place in the tree
-        parts = rel_root.split(os.sep) if rel_root else []
-        current = tree
-        for part in parts:
-            current = current.setdefault(part, {})
-
-        if files:
-            current.setdefault("files", []).extend(files)
-
-    # Clean empty 'files' keys and empty folders
-    def cleanup(d):
-        if "files" in d and not d["files"]:
-            del d["files"]
-        for k, v in list(d.items()):
-            if isinstance(v, dict):
-                cleanup(v)
-                if not v:
-                    del d[k]
-
-    cleanup(tree)
-    return tree
+    dataset, _, inner = sub_path.partition("/")
+    if dataset not in datasets:
+        raise FileNotFoundError(f"Dataset {dataset!r} is not available on this node")
+    if inner:
+        raise ValueError(
+            f"{dataset!r} has no subdirectories here: a dataset's layout is known to the "
+            "WES workers that mount it, not to this node"
+        )
+    return {"files": list(datasets[dataset])}
 
 
 def list_files(user_id, execution_id, path, sandbox_fem, results_url=None, passports=None,
                timeout=DEFAULT_TIMEOUT):
-    """List an execution's results, or a path under the node's data directory.
+    """List an execution's results, or the datasets this node offers.
 
-    `/sandbox` is no longer a directory on this node: a run's outputs are archived by the
-    WES executor and stored in the result service, so the listing is the archive's member
-    list. `/data` is still local — those are the input datasets this node owns.
+    Neither is a directory on this node any more. A run's outputs are archived by the WES
+    executor and stored in the result service, so `/sandbox` is an archive's member list;
+    the datasets are mounted by the WES workers, so `/data` is the `config.datasets`
+    declaration.
     """
     try:
-        # Get DATA base paths from env
-        data_base = os.environ.get("DATA_PATH", "/data")
-
         path = os.path.normpath(path)
 
         if path.startswith("/sandbox"):
@@ -186,16 +173,9 @@ def list_files(user_id, execution_id, path, sandbox_fem, results_url=None, passp
             return _tree_from_names(_member_names(members))
 
         if path.startswith("/data"):
-            # Trim "/data" and join any subpath
-            sub_path = path[5:].lstrip("/")
-            target_path = os.path.join(data_base, sub_path)
-        else:
-            raise ValueError("Path must start with /sandbox or /data.")
+            return _dataset_tree(path[5:].strip("/"))
 
-        if not os.path.exists(target_path):
-            raise FileNotFoundError(f"Path does not exist: {target_path}")
-
-        return _walk_tree(target_path)
+        raise ValueError("Path must start with /sandbox or /data.")
 
     except Exception as e:
         return {"error": str(e)}
@@ -204,22 +184,19 @@ def list_files(user_id, execution_id, path, sandbox_fem, results_url=None, passp
 def send_files_as_json(user_id: str, execution_id: str, sandbox_fem: str, file: str = None,
                        results_url=None, passports=None, timeout=DEFAULT_TIMEOUT) -> str:
     """
-    Prepares an execution's results, or a file under the node's data directory, as the
-    base64 payload the orchestrator expects over RabbitMQ.
+    Prepares an execution's results as the base64 payload the orchestrator expects over
+    RabbitMQ.
 
     Results come from the result service: the WES executor uploaded them there as one
     `.tar.gz` per run, and the members of those archives are the files sent back. `file`
-    selects a single member by its archive path or bare name; without it the whole
-    execution is sent. A `/data` path is still read from this node's disk.
+    selects a single member by any name it is listed under; without it the whole execution
+    is sent. A `/data` path has nothing to send — those datasets never reach this node.
 
     Returns:
         dict: {"base_dir": ..., "files": [{"relative_path", "content_b64"}, ...]}
     """
 
     try:
-
-        # Get DATA base paths from env
-        data_base = os.environ.get("DATA_PATH", "/data")
 
         if execution_id:
             if not user_id:
@@ -258,45 +235,18 @@ def send_files_as_json(user_id: str, execution_id: str, sandbox_fem: str, file: 
             return {"base_dir": str(execution_id), "files": files_payload}
 
         if file and file.startswith("/data"):
-            # Trim "/data" and join any subpath
-            sub_path = file[5:].lstrip("/")
-            target_path = os.path.join(data_base, sub_path)
-        else:
-            raise ValueError("Path must start with /sandbox or /data.")
+            # The datasets are mounted by the WES workers, not here, so this node has no
+            # bytes to send. Answered as an error rather than an empty payload: a caller
+            # that asked for a dataset file needs to know it will never arrive, and a node
+            # that shipped controlled-access data back to the orchestrator would be a
+            # worse answer than a refusal.
+            raise ValueError(
+                f"{file!r} is a dataset path: datasets stay on the WES workers and are "
+                "never read by this node. list_files /data names what is available; a "
+                "workflow reads it through the input_dir the catalogue injects"
+            )
 
-        logging.info(f"Sending file or folder: {target_path}")
-
-        if not os.path.exists(target_path):
-            raise FileNotFoundError(f"Path does not exist: {target_path}")
-
-        files_payload = []
-
-        if os.path.isfile(target_path):
-            base_dir = os.path.dirname(target_path)
-            files = [target_path]
-        else:
-            base_dir = target_path
-            files = [
-                os.path.join(root, filename)
-                for root, _, filenames in os.walk(target_path)
-                for filename in filenames
-            ]
-
-        for full_file_path in files:
-            relative_path = os.path.relpath(full_file_path, base_dir).replace("\\", "/")
-
-            with open(full_file_path, 'rb') as f:
-                file_bytes = f.read()
-
-            files_payload.append({
-                "relative_path": _node_prefixed(relative_path),
-                "content_b64": base64.b64encode(file_bytes).decode('utf-8')
-            })
-
-        return {
-            "base_dir": os.path.basename(base_dir),
-            "files": files_payload
-        }
+        raise ValueError("Path must start with /sandbox or /data.")
 
     except Exception as e:
         return {"error": str(e)}

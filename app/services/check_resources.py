@@ -7,6 +7,7 @@ import json
 import datetime
 import GPUtil
 import requests
+from config import config
 
 # Set up logging configuration
 #logging.basicConfig(filename='receiver.log', level=logging.INFO)
@@ -34,21 +35,25 @@ def check_gpu():
         return {"gpu_detected": False, "message": "No Nvidia GPU or driver error"}
 
 def check_paths():
+    """Health-check view of the node's storage.
+
+    The sandbox is a real mount and is probed. The datasets are not: they are mounted by
+    the WES workers, so `/data` does not exist in this container and the health check
+    answers from `config.datasets` — the same declaration `list_files /data` serves. The
+    field names are the orchestrator's and stay as they are.
+    """
     sandbox_path = Path(os.environ.get('SANDBOX_PATH', '/sandbox'))
-    data_path = Path(os.environ.get('DATA_PATH', '/data'))
+    datasets = getattr(config, "datasets", None) or {}
 
     paths_status = {
         "sandbox_path_exists": sandbox_path.exists(),
-        "data_path_exists": data_path.exists(),
+        "data_path_exists": bool(datasets),
         "sandbox_contents": [],
-        "data_path_contents": []
+        "data_path_contents": sorted(datasets),
     }
 
     if sandbox_path.exists():
         paths_status["sandbox_contents"] = os.listdir(sandbox_path)
-
-    if data_path.exists():
-        paths_status["data_path_contents"] = os.listdir(data_path)
 
     return paths_status
 
