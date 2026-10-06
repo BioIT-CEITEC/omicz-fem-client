@@ -243,11 +243,15 @@ def action_status(args):
     run = wes_get(f"{args.wes_url}/runs/{args.external_id}", args.token, args.timeout)
     logs = read_log((run.get("run_log") or {}).get("stdout"), args.token, args.timeout)
 
-    if args.sandbox_local and args.user_id and args.execution_id:
-        rundir = os.path.join(args.sandbox_local, args.user_id, args.execution_id)
+    # The log is a deliverable, not a side effect: `list_files`/`send_files` answer with it
+    # next to the run's results, so it is written where `results_store` looks for it.
+    if args.sandbox_local and args.user_id and args.execution_id and args.task_id:
+        path = results_store.run_log_path(
+            args.sandbox_local, args.user_id, args.execution_id, args.task_id
+        )
         try:
-            os.makedirs(rundir, exist_ok=True)
-            with open(os.path.join(rundir, f"{args.task_id}.log"), "w") as fh:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as fh:
                 fh.write(logs)
         except OSError as exc:
             print(f"could not write log file: {exc}", file=sys.stderr)

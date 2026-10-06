@@ -7,7 +7,12 @@ import argparse
 import sys
 from fnmatch import fnmatch
 
-from services.results_store import execution_members, passports_from, results_url_from
+from services.results_store import (
+    execution_logs,
+    execution_members,
+    passports_from,
+    results_url_from,
+)
 
 DEFAULT_TIMEOUT = 300.0
 
@@ -147,9 +152,9 @@ def list_files(user_id, execution_id, path, sandbox_fem, results_url=None, passp
     """List an execution's results, or the datasets this node offers.
 
     Neither is a directory on this node any more. A run's outputs are archived by the WES
-    executor and stored in the result service, so `/sandbox` is an archive's member list;
-    the datasets are mounted by the WES workers, so `/data` is the `config.datasets`
-    declaration.
+    executor and stored in the result service, so `/sandbox` is an archive's member list
+    plus the run log this node wrote for the execution; the datasets are mounted by the
+    WES workers, so `/data` is the `config.datasets` declaration.
     """
     try:
         path = os.path.normpath(path)
@@ -168,6 +173,12 @@ def list_files(user_id, execution_id, path, sandbox_fem, results_url=None, passp
             )
             if empty:
                 logging.info(f"Runs with no stored result: {', '.join(empty)}")
+            # The log is a deliverable too: the node answers with the result file and the
+            # run's log, which is what the stage-out shipped before the results moved off
+            # this disk.
+            members += execution_logs(
+                sandbox_fem, str(user_id), str(execution_id), with_content=False
+            )
             # The listed name is the name `send_files --file` is then called with, which is
             # the file's own name, not the prefixed one the answer carries.
             return _tree_from_names(_member_names(members))
@@ -188,9 +199,10 @@ def send_files_as_json(user_id: str, execution_id: str, sandbox_fem: str, file: 
     RabbitMQ.
 
     Results come from the result service: the WES executor uploaded them there as one
-    `.tar.gz` per run, and the members of those archives are the files sent back. `file`
-    selects a single member by any name it is listed under; without it the whole execution
-    is sent. A `/data` path has nothing to send — those datasets never reach this node.
+    `.tar.gz` per run, and the members of those archives are the files sent back, together
+    with the run log this node wrote for the execution. `file` selects a single member by
+    any name it is listed under; without it the whole execution is sent. A `/data` path has
+    nothing to send — those datasets never reach this node.
 
     Returns:
         dict: {"base_dir": ..., "files": [{"relative_path", "content_b64"}, ...]}
@@ -211,6 +223,9 @@ def send_files_as_json(user_id: str, execution_id: str, sandbox_fem: str, file: 
                 passports_from(passports),
                 timeout,
                 match=_matcher(wanted),
+            )
+            members += execution_logs(
+                sandbox_fem, str(user_id), str(execution_id), match=_matcher(wanted)
             )
             if empty:
                 logging.info(f"Runs with no stored result: {', '.join(empty)}")

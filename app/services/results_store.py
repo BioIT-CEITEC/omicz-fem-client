@@ -3,9 +3,10 @@
 
 A WES run's outputs never land on this node: the executor tars them and PUTs the archive to
 the result service under the run's own id (`omiczwes/executor.py:_results_url` →
-`PUT /data/{run_id}`). So `list_files` and `send_files` read a *remote* archive, not the
-local sandbox, and the only thing the node still keeps on disk is what the orchestrator
-pushed in with `receive_files` — the workflow attachments, which are inputs.
+`PUT /data/{run_id}`). So `list_files` and `send_files` read a *remote* archive for the
+results. What the node still keeps on disk is the run log `run_status` wrote — a
+deliverable, shipped with the results — and what the orchestrator pushed in with
+`receive_files`, which are inputs.
 
 Addressing those archives needs the run ids of an execution, and the orchestrator's file
 actions carry none: `run_tool` calls them with `task_info=None`, so `%%EXTERNAL_ID%%` cannot
@@ -63,6 +64,58 @@ def record_run(sandbox_fem, user_id, execution_id, run_id, task_id=""):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as fh:
         json.dump(entries, fh)
+
+
+def run_log_path(sandbox_fem, user_id, execution_id, task_id):
+    """Where `run_status` leaves a task's log.
+
+    The name is the orchestrator's task id, exactly as the docker launcher's
+    `docker logs > <task_id>.log` named it, because the federation is handed that file
+    back next to the results and knows it under that name.
+    """
+    return os.path.join(sandbox_fem, str(user_id), str(execution_id), f"{task_id}.log")
+
+
+def execution_logs(sandbox_fem, user_id, execution_id, match=None, with_content=True):
+    """The run logs this node wrote for an execution, as `(run_id, name, bytes | None)`.
+
+    The one deliverable that is not in the result service. `run_status` writes the WES
+    run's stdout to `<task_id>.log` in the execution's folder, and the stage-out ships it
+    alongside the archived results — two files leave a node, the result and the log.
+
+    The ledger names them: a file here is a log because a recorded run says so, never
+    because of its extension, so the workflow attachments `receive_files` stages in the
+    same directory — inputs — are not mistaken for outputs.
+
+    A task resubmitted under a new run id still has one log file on disk (the latest
+    `run_status` overwrote it), so it is reported once, under the run that wrote it last.
+    """
+    found = {}
+    for entry in recorded_runs(sandbox_fem, user_id, execution_id):
+        task_id = str(entry.get("task_id") or "").strip()
+        # The task id comes from off-node and is used as a file name: a separator or a
+        # `..` would address something outside the execution's folder.
+        if not task_id or task_id in (".", "..") or "/" in task_id or os.sep in task_id:
+            continue
+        name = f"{task_id}.log"
+        path = run_log_path(sandbox_fem, user_id, execution_id, task_id)
+        if not os.path.isfile(path):
+            continue
+        if match and not match(entry["run_id"], name):
+            continue
+        found[name] = (entry["run_id"], path)
+
+    logs = []
+    for name, (run_id, path) in found.items():
+        content = None
+        if with_content:
+            try:
+                with open(path, "rb") as fh:
+                    content = fh.read()
+            except OSError:
+                continue
+        logs.append((run_id, name, content))
+    return logs
 
 
 # --------------------------------------------------------------------------- archives
